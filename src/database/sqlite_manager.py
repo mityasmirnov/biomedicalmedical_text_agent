@@ -203,7 +203,7 @@ class SQLiteManager:
                          treatments, medications, dosages, treatment_response, adverse_events,
                          survival_status, survival_time, cause_of_death, follow_up_duration, clinical_outcome,
                          extraction_metadata, confidence_scores, validation_status, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, db_data)
                     
                     stored_ids.append(record.id)

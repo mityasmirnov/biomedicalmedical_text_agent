@@ -74,8 +74,13 @@ class SystemTester:
         print("\n🔧 Testing Component Initialization...")
         
         try:
-            # Initialize orchestrator
-            self.orchestrator = ExtractionOrchestrator()
+            # Initialize LLM client first
+            from core.llm_client.openrouter_client import OpenRouterClient
+            llm_client = OpenRouterClient()
+            print("✅ LLM Client initialized")
+            
+            # Initialize orchestrator with LLM client
+            self.orchestrator = ExtractionOrchestrator(llm_client=llm_client)
             print("✅ Extraction Orchestrator initialized")
             
             # Initialize database managers

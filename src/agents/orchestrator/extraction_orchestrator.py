@@ -147,3 +147,110 @@ class ExtractionOrchestrator:
             # Additional agents (demographics, genetics) could be called here
             records.append(record)
         return records
+    
+    async def extract_from_file(self, file_path: str) -> "ProcessingResult[List[Dict[str, Any]]]":
+        """Extract patient data from a file.
+        
+        Parameters
+        ----------
+        file_path: str
+            Path to the file to process.
+            
+        Returns
+        -------
+        ProcessingResult[List[Dict[str, Any]]]
+            Result containing extracted patient records.
+        """
+        try:
+            from pathlib import Path
+            from processors.pdf_parser import PDFParser
+            from processors.patient_segmenter import PatientSegmenter
+            from core.base import ProcessingResult
+            
+            # Parse the document
+            pdf_parser = PDFParser()
+            parse_result = pdf_parser.process(file_path)
+            
+            if not parse_result.success:
+                return ProcessingResult(
+                    success=False,
+                    error=f"Failed to parse file: {parse_result.error}"
+                )
+            
+            document = parse_result.data
+            
+            # Extract text from document
+            article_text = document.content
+            
+            # Run extraction on text
+            records = self.extract_from_text(article_text)
+            
+            # Convert records to PatientRecord objects if they're not already
+            from core.base import PatientRecord
+            patient_records = []
+            for record in records:
+                if isinstance(record, dict):
+                    patient_record = PatientRecord(
+                        patient_id=record.get('patient_id', 'unknown'),
+                        data=record
+                    )
+                    patient_records.append(patient_record)
+                else:
+                    patient_records.append(record)
+            
+            return ProcessingResult(
+                success=True,
+                data=patient_records,
+                metadata={
+                    "source_file": file_path,
+                    "document_title": document.title,
+                    "extraction_method": "orchestrator"
+                }
+            )
+            
+        except Exception as e:
+            from core.base import ProcessingResult
+            return ProcessingResult(
+                success=False,
+                error=f"Extraction failed: {str(e)}"
+            )
+    
+    def get_extraction_statistics(self, records: List) -> Dict[str, Any]:
+        """Generate statistics about extracted records.
+        
+        Parameters
+        ----------
+        records: List
+            List of extracted patient records
+            
+        Returns
+        -------
+        Dict[str, Any]
+            Statistics about the extraction
+        """
+        if not records:
+            return {}
+        
+        # Count records by patient ID
+        patient_ids = [record.patient_id if hasattr(record, 'patient_id') else record.get('patient_id', 'unknown') for record in records]
+        unique_patients = len(set(patient_ids))
+        
+        # Count records by source
+        sources = [record.source_document_id if hasattr(record, 'source_document_id') else 'unknown' for record in records]
+        unique_sources = len(set(sources))
+        
+        # Field coverage analysis
+        field_counts = {}
+        for record in records:
+            data = record.data if hasattr(record, 'data') else record
+            for field, value in data.items():
+                if value is not None and value != "":
+                    field_counts[field] = field_counts.get(field, 0) + 1
+        
+        return {
+            "total_records": len(records),
+            "unique_patients": unique_patients,
+            "unique_sources": unique_sources,
+            "field_coverage": field_counts,
+            "extraction_method": "orchestrator"
+        }

@@ -5,7 +5,7 @@ Base classes and interfaces for the Biomedical Data Extraction Engine.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union, Generic, TypeVar
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import uuid
 
@@ -52,7 +52,7 @@ class ProcessingResult(Generic[T]):
     warnings: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
     processing_time: Optional[float] = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     def add_warning(self, warning: str) -> None:
         """Add a warning message."""
@@ -72,7 +72,7 @@ class Document:
     format: DocumentFormat = DocumentFormat.TXT
     source_path: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     def get_metadata(self, key: str, default: Any = None) -> Any:
         """Get metadata value."""
@@ -93,8 +93,9 @@ class PatientRecord:
     data: Dict[str, Any] = field(default_factory=dict)
     confidence_scores: Dict[str, float] = field(default_factory=dict)
     extraction_metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    validation_status: str = "pending"
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     def get_field(self, field_name: str, default: Any = None) -> Any:
         """Get a data field value."""
@@ -105,7 +106,7 @@ class PatientRecord:
         self.data[field_name] = value
         if confidence is not None:
             self.confidence_scores[field_name] = confidence
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
     
     def get_confidence(self, field_name: str) -> Optional[float]:
         """Get confidence score for a field."""

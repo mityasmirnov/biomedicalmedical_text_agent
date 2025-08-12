@@ -63,9 +63,11 @@ def extract(file_path, output, output_format, validate, ground_truth):
                 console=console,
             ) as progress:
                 
-                # Initialize orchestrator
+                # Initialize LLM client and orchestrator
                 task = progress.add_task("Initializing extraction pipeline...", total=None)
-                orchestrator = ExtractionOrchestrator()
+                from core.llm_client.openrouter_client import OpenRouterClient
+                llm_client = OpenRouterClient()
+                orchestrator = ExtractionOrchestrator(llm_client=llm_client)
                 
                 # Run extraction
                 progress.update(task, description=f"Processing {Path(file_path).name}...")
@@ -96,9 +98,8 @@ def extract(file_path, output, output_format, validate, ground_truth):
                 else:
                     console.print(JSON.from_data(json_output))
             elif output_format == 'csv':
-                if not output:
-                    output = f"{Path(file_path).stem}_extracted.csv"
-                save_csv_output(records, output)
+                csv_output = output if output else f"{Path(file_path).stem}_extracted.csv"
+                save_csv_output(records, csv_output)
             
             # Validation against ground truth
             if validate and ground_truth:
@@ -143,9 +144,11 @@ def batch(directory, pattern, output, max_files):
                 console=console,
             ) as progress:
                 
-                # Initialize orchestrator
+                # Initialize LLM client and orchestrator
                 task = progress.add_task("Initializing batch extraction...", total=None)
-                orchestrator = ExtractionOrchestrator()
+                from core.llm_client.openrouter_client import OpenRouterClient
+                llm_client = OpenRouterClient()
+                orchestrator = ExtractionOrchestrator(llm_client=llm_client)
                 
                 # Run batch extraction
                 progress.update(task, description=f"Processing {len(files)} files...")
