@@ -7,6 +7,7 @@ import sys
 import os
 import argparse
 from pathlib import Path
+import asyncio
 
 # Add src to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -125,6 +126,75 @@ def run_usage():
         print(f"❌ Usage check failed: {e}")
         sys.exit(1)
 
+def run_providers():
+    """Check status of all LLM providers and test their availability."""
+    try:
+        from core.llm_client.smart_llm_manager import SmartLLMManager
+        
+        print("🔌 LLM Provider Status")
+        print("=" * 50)
+        
+        # Initialize smart LLM manager
+        manager = SmartLLMManager()
+        
+        # Get provider status
+        status = manager.get_provider_status()
+        available_providers = manager.get_available_providers()
+        current_provider = manager.get_current_provider()
+        
+        print(f"🎯 Current Provider: {current_provider}")
+        print(f"📡 Available Providers: {', '.join(available_providers)}")
+        print()
+        
+        # Display status for each provider
+        for provider, info in status.items():
+            status_icon = "✅" if info["healthy"] else "❌"
+            current_icon = "🎯" if info["current"] else "  "
+            print(f"{current_icon} {provider.upper()}")
+            print(f"   {status_icon} Available: {info['available']}")
+            print(f"   {status_icon} Healthy: {info['healthy']}")
+            print(f"   {status_icon} Current: {info['current']}")
+            print()
+        
+        # Test all providers
+        print("🧪 Testing All Providers...")
+        print("-" * 30)
+        
+        test_results = asyncio.run(manager.test_all_providers())
+        
+        for provider, result in test_results.items():
+            result_icon = "✅" if result else "❌"
+            print(f"{result_icon} {provider}: {'Working' if result else 'Failed'}")
+        
+        print()
+        
+        # Show usage information if available
+        if current_provider == "openrouter":
+            try:
+                from core.api_usage_tracker import APIUsageTracker
+                from core.config import get_config
+                
+                config = get_config()
+                usage_tracker = APIUsageTracker(config.llm.usage_database_path)
+                
+                # Get remaining requests
+                remaining = manager.primary_client.get_remaining_requests() if hasattr(manager, 'primary_client') and manager.primary_client else {}
+                
+                if remaining:
+                    print("📊 OpenRouter Usage")
+                    print("-" * 20)
+                    print(f"📅 Daily Remaining: {remaining.get('daily', 'Unknown')}")
+                    print(f"📆 Monthly Remaining: {remaining.get('monthly', 'Unknown')}")
+                
+            except Exception as e:
+                print(f"⚠️  Could not fetch usage info: {e}")
+        
+        print("🎉 Provider status check completed!")
+        
+    except Exception as e:
+        print(f"❌ Provider status check failed: {e}")
+        sys.exit(1)
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -136,6 +206,7 @@ Examples:
   python run_enhanced_system.py extract input.pdf output.json  # Extract data
   python run_enhanced_system.py demo                      # Run demo extraction
   python run_enhanced_system.py usage                     # Check API usage
+  python run_enhanced_system.py providers                 # Check LLM provider status
         """
     )
     
@@ -154,6 +225,9 @@ Examples:
     
     # Usage command
     subparsers.add_parser('usage', help='Check API usage statistics and limits')
+
+    # Providers command
+    subparsers.add_parser('providers', help='Check status of all LLM providers and test their availability')
     
     args = parser.parse_args()
     
@@ -169,6 +243,8 @@ Examples:
         run_demo()
     elif args.command == 'usage':
         run_usage()
+    elif args.command == 'providers':
+        run_providers()
     else:
         print(f"Unknown command: {args.command}")
         parser.print_help()

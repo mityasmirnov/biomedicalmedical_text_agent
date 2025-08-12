@@ -45,6 +45,20 @@ class LLMConfig(BaseSettings):
     enable_usage_tracking: bool = Field(default=True, env="ENABLE_USAGE_TRACKING")
     usage_database_path: str = Field(default="./data/api_usage.db", env="USAGE_DATABASE_PATH")
     
+    # Fallback Model Configuration
+    enable_fallback_models: bool = Field(default=True, env="ENABLE_FALLBACK_MODELS")
+    fallback_strategy: str = Field(default="ollama,huggingface", env="FALLBACK_STRATEGY")
+    
+    # Ollama Configuration
+    ollama_base_url: str = Field(default="http://localhost:11434", env="OLLAMA_BASE_URL")
+    ollama_default_model: str = Field(default="llama3.1:8b", env="OLLAMA_DEFAULT_MODEL")
+    ollama_timeout: int = Field(default=120, env="OLLAMA_TIMEOUT")
+    
+    # HuggingFace Configuration
+    huggingface_default_model: str = Field(default="microsoft/DialoGPT-medium", env="HUGGINGFACE_DEFAULT_MODEL")
+    huggingface_device: str = Field(default="auto", env="HUGGINGFACE_DEVICE")
+    huggingface_quantization: bool = Field(default=True, env="HUGGINGFACE_QUANTIZATION")
+    
     # No env_prefix to allow direct environment variable names
 
 class VectorDBConfig(BaseSettings):

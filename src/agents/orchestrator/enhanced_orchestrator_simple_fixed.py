@@ -76,8 +76,13 @@ class SimpleEnhancedOrchestrator:
         """Initialize system components."""
         try:
             # Initialize LLM client
-            self.llm_client = OpenRouterClient()
-            logging.info("OpenRouter client initialized")
+            try:
+                from core.llm_client.smart_llm_manager import SmartLLMManager
+                self.llm_client = SmartLLMManager()
+                logging.info(f"Smart LLM Manager initialized with provider: {self.llm_client.get_current_provider()}")
+            except Exception as e:
+                logging.error(f"Failed to initialize Smart LLM Manager: {e}")
+                self.llm_client = None
             
             # Initialize database manager
             self.database_manager = SQLiteManager()
