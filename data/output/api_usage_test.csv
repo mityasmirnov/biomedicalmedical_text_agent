@@ -1,0 +1,4 @@
+id,timestamp,api_provider,model,prompt_tokens,completion_tokens,total_tokens,cost,success,error_message,request_id,created_at
+3,1755036269.5132108,openrouter,deepseek/deepseek-chat-v3-0324:free,100,25,125,0.0008,0,Rate limit exceeded,test_003,2025-08-12 22:19:29
+2,1755035369.513209,openrouter,deepseek/deepseek-chat-v3-0324:free,200,75,275,0.0015,1,,test_002,2025-08-12 22:19:29
+1,1755033569.513203,openrouter,deepseek/deepseek-chat-v3-0324:free,150,50,200,0.001,1,,test_001,2025-08-12 22:19:29
