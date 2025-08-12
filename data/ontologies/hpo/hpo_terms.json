@@ -1,0 +1,318 @@
+{
+  "terms": {
+    "HP:0001250": {
+      "name": "Seizures",
+      "definition": "Seizures are episodes of abnormal motor, sensory, autonomic, or psychic activity.",
+      "synonyms": [
+        "Seizure",
+        "Epileptic seizure",
+        "Convulsions"
+      ],
+      "parents": [
+        "HP:0000707"
+      ],
+      "children": [
+        "HP:0002069",
+        "HP:0011097"
+      ]
+    },
+    "HP:0001263": {
+      "name": "Global developmental delay",
+      "definition": "A delay in the achievement of motor or mental milestones in the domains of development.",
+      "synonyms": [
+        "Developmental delay",
+        "Delayed development",
+        "Delayed psychomotor development"
+      ],
+      "parents": [
+        "HP:0000707"
+      ],
+      "children": []
+    },
+    "HP:0001252": {
+      "name": "Muscular hypotonia",
+      "definition": "Muscular hypotonia is an abnormally low muscle tone.",
+      "synonyms": [
+        "Hypotonia",
+        "Low muscle tone",
+        "Muscle hypotonia",
+        "Floppy infant syndrome"
+      ],
+      "parents": [
+        "HP:0003011"
+      ],
+      "children": []
+    },
+    "HP:0002376": {
+      "name": "Developmental regression",
+      "definition": "Loss of developmental milestones.",
+      "synonyms": [
+        "Regression",
+        "Developmental deterioration",
+        "Loss of milestones"
+      ],
+      "parents": [
+        "HP:0000707"
+      ],
+      "children": []
+    },
+    "HP:0001508": {
+      "name": "Failure to thrive",
+      "definition": "Failure to thrive is a term used to describe poor weight gain and physical growth failure.",
+      "synonyms": [
+        "FTT",
+        "Poor growth",
+        "Growth failure"
+      ],
+      "parents": [
+        "HP:0001507"
+      ],
+      "children": []
+    },
+    "HP:0000707": {
+      "name": "Abnormality of the nervous system",
+      "definition": "An abnormality of the nervous system.",
+      "synonyms": [
+        "Neurological abnormality",
+        "Neurologic abnormality"
+      ],
+      "parents": [
+        "HP:0000118"
+      ],
+      "children": [
+        "HP:0001250",
+        "HP:0001263",
+        "HP:0002376"
+      ]
+    },
+    "HP:0003011": {
+      "name": "Abnormality of the musculature",
+      "definition": "An abnormality of the musculature.",
+      "synonyms": [
+        "Muscle abnormality",
+        "Muscular abnormality"
+      ],
+      "parents": [
+        "HP:0000118"
+      ],
+      "children": [
+        "HP:0001252"
+      ]
+    },
+    "HP:0001507": {
+      "name": "Growth abnormality",
+      "definition": "An abnormality of growth or size.",
+      "synonyms": [
+        "Growth abnormality"
+      ],
+      "parents": [
+        "HP:0000118"
+      ],
+      "children": [
+        "HP:0001508"
+      ]
+    },
+    "HP:0000118": {
+      "name": "Phenotypic abnormality",
+      "definition": "A phenotypic abnormality.",
+      "synonyms": [
+        "Organ abnormality"
+      ],
+      "parents": [],
+      "children": [
+        "HP:0000707",
+        "HP:0003011",
+        "HP:0001507"
+      ]
+    },
+    "HP:0002069": {
+      "name": "Bilateral tonic-clonic seizures",
+      "definition": "Bilateral tonic-clonic seizures.",
+      "synonyms": [
+        "Generalized tonic-clonic seizures",
+        "Grand mal seizures"
+      ],
+      "parents": [
+        "HP:0001250"
+      ],
+      "children": []
+    },
+    "HP:0011097": {
+      "name": "Epileptic spasms",
+      "definition": "Epileptic spasms are a type of seizure.",
+      "synonyms": [
+        "Infantile spasms",
+        "West syndrome spasms"
+      ],
+      "parents": [
+        "HP:0001250"
+      ],
+      "children": []
+    },
+    "HP:0001298": {
+      "name": "Encephalopathy",
+      "definition": "Encephalopathy is a term for any diffuse disease of the brain.",
+      "synonyms": [
+        "Brain dysfunction",
+        "Cerebral dysfunction"
+      ],
+      "parents": [
+        "HP:0000707"
+      ],
+      "children": []
+    },
+    "HP:0002151": {
+      "name": "Increased serum lactate",
+      "definition": "An abnormal increase in the level of lactate in the blood.",
+      "synonyms": [
+        "Elevated lactate",
+        "High lactate",
+        "Lactic acidosis"
+      ],
+      "parents": [
+        "HP:0003111"
+      ],
+      "children": []
+    },
+    "HP:0003111": {
+      "name": "Abnormality of blood and blood-forming tissues",
+      "definition": "An abnormality of blood and blood-forming tissues.",
+      "synonyms": [
+        "Blood abnormality",
+        "Hematological abnormality"
+      ],
+      "parents": [
+        "HP:0000118"
+      ],
+      "children": [
+        "HP:0002151"
+      ]
+    }
+  },
+  "name_to_id": {
+    "seizures": "HP:0001250",
+    "global developmental delay": "HP:0001263",
+    "muscular hypotonia": "HP:0001252",
+    "developmental regression": "HP:0002376",
+    "failure to thrive": "HP:0001508",
+    "abnormality of the nervous system": "HP:0000707",
+    "abnormality of the musculature": "HP:0003011",
+    "growth abnormality": "HP:0001507",
+    "phenotypic abnormality": "HP:0000118",
+    "bilateral tonic-clonic seizures": "HP:0002069",
+    "epileptic spasms": "HP:0011097",
+    "encephalopathy": "HP:0001298",
+    "increased serum lactate": "HP:0002151",
+    "abnormality of blood and blood-forming tissues": "HP:0003111"
+  },
+  "synonyms_to_id": {
+    "seizure": "HP:0001250",
+    "epileptic seizure": "HP:0001250",
+    "convulsions": "HP:0001250",
+    "developmental delay": "HP:0001263",
+    "delayed development": "HP:0001263",
+    "delayed psychomotor development": "HP:0001263",
+    "hypotonia": "HP:0001252",
+    "low muscle tone": "HP:0001252",
+    "muscle hypotonia": "HP:0001252",
+    "floppy infant syndrome": "HP:0001252",
+    "regression": "HP:0002376",
+    "developmental deterioration": "HP:0002376",
+    "loss of milestones": "HP:0002376",
+    "ftt": "HP:0001508",
+    "poor growth": "HP:0001508",
+    "growth failure": "HP:0001508",
+    "neurological abnormality": "HP:0000707",
+    "neurologic abnormality": "HP:0000707",
+    "muscle abnormality": "HP:0003011",
+    "muscular abnormality": "HP:0003011",
+    "growth abnormality": "HP:0001507",
+    "organ abnormality": "HP:0000118",
+    "generalized tonic-clonic seizures": "HP:0002069",
+    "grand mal seizures": "HP:0002069",
+    "infantile spasms": "HP:0011097",
+    "west syndrome spasms": "HP:0011097",
+    "brain dysfunction": "HP:0001298",
+    "cerebral dysfunction": "HP:0001298",
+    "elevated lactate": "HP:0002151",
+    "high lactate": "HP:0002151",
+    "lactic acidosis": "HP:0002151",
+    "blood abnormality": "HP:0003111",
+    "hematological abnormality": "HP:0003111"
+  },
+  "parent_child": {
+    "HP:0001250": [
+      "HP:0002069",
+      "HP:0011097"
+    ],
+    "HP:0001263": [],
+    "HP:0001252": [],
+    "HP:0002376": [],
+    "HP:0001508": [],
+    "HP:0000707": [
+      "HP:0001250",
+      "HP:0001263",
+      "HP:0002376"
+    ],
+    "HP:0003011": [
+      "HP:0001252"
+    ],
+    "HP:0001507": [
+      "HP:0001508"
+    ],
+    "HP:0000118": [
+      "HP:0000707",
+      "HP:0003011",
+      "HP:0001507"
+    ],
+    "HP:0002069": [],
+    "HP:0011097": [],
+    "HP:0001298": [],
+    "HP:0002151": [],
+    "HP:0003111": [
+      "HP:0002151"
+    ]
+  },
+  "child_parent": {
+    "HP:0001250": [
+      "HP:0000707"
+    ],
+    "HP:0001263": [
+      "HP:0000707"
+    ],
+    "HP:0001252": [
+      "HP:0003011"
+    ],
+    "HP:0002376": [
+      "HP:0000707"
+    ],
+    "HP:0001508": [
+      "HP:0001507"
+    ],
+    "HP:0000707": [
+      "HP:0000118"
+    ],
+    "HP:0003011": [
+      "HP:0000118"
+    ],
+    "HP:0001507": [
+      "HP:0000118"
+    ],
+    "HP:0000118": [],
+    "HP:0002069": [
+      "HP:0001250"
+    ],
+    "HP:0011097": [
+      "HP:0001250"
+    ],
+    "HP:0001298": [
+      "HP:0000707"
+    ],
+    "HP:0002151": [
+      "HP:0003111"
+    ],
+    "HP:0003111": [
+      "HP:0000118"
+    ]
+  }
+}

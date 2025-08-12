@@ -1,0 +1,1285 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PatientRecord",
+  "type": "object",
+  "properties": {
+    "pmid": {
+      "type": "number",
+      "description": "PMID"
+    },
+    "patient_id": {
+      "type": "string",
+      "description": "patient ID"
+    },
+    "sex": {
+      "type": "string",
+      "description": "sex",
+      "enum": [
+        "f",
+        "m"
+      ]
+    },
+    "year_of_birth": {
+      "type": "number",
+      "description": "year of birth"
+    },
+    "last_seen": {
+      "type": "number",
+      "description": "last seen"
+    },
+    "age_of_death": {
+      "type": "number",
+      "description": "Age of death"
+    },
+    "_0_alive_1_dead": {
+      "type": "number",
+      "description": "0=alive, 1=dead",
+      "enum": [
+        0,
+        1
+      ]
+    },
+    "age_of_onset": {
+      "type": "number",
+      "description": "Age of onset"
+    },
+    "mt_oder_ndna": {
+      "type": "string",
+      "description": "mt oder nDNA",
+      "enum": [
+        "m",
+        "n"
+      ]
+    },
+    "gene": {
+      "type": "string",
+      "description": "gene"
+    },
+    "gene_1": {
+      "type": "string",
+      "description": "gene.1"
+    },
+    "gene_2": {
+      "type": "string",
+      "description": "gene.2"
+    },
+    "mutations": {
+      "type": "string",
+      "description": "mutations"
+    },
+    "birth_c_complicated_n_normal": {
+      "type": "string",
+      "description": "birth (c=complicated, n=normal)",
+      "enum": [
+        "",
+        "c",
+        "n"
+      ]
+    },
+    "pregnancy_n_normal_c_complicated_i_iugr": {
+      "type": "string",
+      "description": "pregnancy (n=normal, c=complicated, i= IUGR)",
+      "enum": [
+        "c",
+        "i",
+        "n"
+      ]
+    },
+    "apgar_1_minute": {
+      "type": "string",
+      "description": "APGAR 1 minute"
+    },
+    "apgar_5_minute": {
+      "type": "string",
+      "description": "APGAR 5 minute"
+    },
+    "apgar_10_minutes": {
+      "type": "number",
+      "description": "APGAR 10 minutes"
+    },
+    "low_birth_weight_p_premature": {
+      "type": "string",
+      "description": "low birth weight (p=premature)",
+      "enum": [
+        "p",
+        "x"
+      ]
+    },
+    "dysmorphic_features": {
+      "type": "string",
+      "description": "dysmorphic features"
+    },
+    "organ_limb_deformities": {
+      "type": "string",
+      "description": "organ/ limb deformities"
+    },
+    "milestone1": {
+      "type": "string",
+      "description": "Milestone1"
+    },
+    "score1": {
+      "type": "number",
+      "description": "Score1"
+    },
+    "age1": {
+      "type": "number",
+      "description": "age1"
+    },
+    "lost1": {
+      "type": "number",
+      "description": "lost1"
+    },
+    "milestone2": {
+      "type": "string",
+      "description": "Milestone2"
+    },
+    "score2": {
+      "type": "number",
+      "description": "score2"
+    },
+    "age2": {
+      "type": "number",
+      "description": "age2"
+    },
+    "lost2": {
+      "type": "number",
+      "description": "lost2"
+    },
+    "milestone3": {
+      "type": "string",
+      "description": "Milestone3"
+    },
+    "score3": {
+      "type": "number",
+      "description": "score3"
+    },
+    "age3": {
+      "type": "number",
+      "description": "age3"
+    },
+    "lost3": {
+      "type": "number",
+      "description": "lost3"
+    },
+    "milestone4": {
+      "type": "string",
+      "description": "Milestone4"
+    },
+    "score4": {
+      "type": "number",
+      "description": "score4"
+    },
+    "age4": {
+      "type": "number",
+      "description": "age4"
+    },
+    "lost4": {
+      "type": "number",
+      "description": "lost4"
+    },
+    "milestone5": {
+      "type": "string",
+      "description": "Milestone5"
+    },
+    "score5": {
+      "type": "number",
+      "description": "score5"
+    },
+    "age5": {
+      "type": "number",
+      "description": "age5"
+    },
+    "lost5": {
+      "type": "number",
+      "description": "lost5"
+    },
+    "milestone6": {
+      "type": "string",
+      "description": "Milestone6"
+    },
+    "score6": {
+      "type": "number",
+      "description": "score6"
+    },
+    "age6": {
+      "type": "number",
+      "description": "age6"
+    },
+    "lost6": {
+      "type": "number",
+      "description": "lost6"
+    },
+    "milestone7": {
+      "type": "string",
+      "description": "Milestone7"
+    },
+    "score7": {
+      "type": "number",
+      "description": "score7"
+    },
+    "age7": {
+      "type": "number",
+      "description": "age7"
+    },
+    "lost7": {
+      "type": "number",
+      "description": "lost7"
+    },
+    "treatment_at_age": {
+      "type": "number",
+      "description": "treatment at age"
+    },
+    "what_treatment": {
+      "type": "string",
+      "description": "what treatment"
+    },
+    "outcome_after_treatment_progressive_steady_improvement": {
+      "type": "string",
+      "description": "outcome after treatment (progressive/steady/improvement)"
+    },
+    "mri_outcome": {
+      "type": "string",
+      "description": "MRI outcome"
+    },
+    "ph": {
+      "type": "number",
+      "description": "pH"
+    },
+    "unnamed_54": {
+      "type": "string",
+      "description": "Classification for pH (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "e",
+        "l",
+        "n"
+      ]
+    },
+    "csf_lactate_mmol_l_0_9_2_7": {
+      "type": "number",
+      "description": "CSF lactate mmol/l (0,9-2,7)"
+    },
+    "unnamed_56": {
+      "type": "string",
+      "description": "Classification for CSF lactate mmol/l (0,9-2,7) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "e",
+        "n"
+      ]
+    },
+    "csf_pyruvat_0_15mmol_l": {
+      "type": "number",
+      "description": "CSF pyruvat (<0,15mmol/l)"
+    },
+    "unnamed_58": {
+      "type": "string",
+      "description": "Classification for CSF pyruvat (<0,15mmol/l) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "e",
+        "n"
+      ]
+    },
+    "serum_lactate_0_5_2_2mmol_l": {
+      "type": "number",
+      "description": "serum Lactate (0,5-2,2mmol/l)"
+    },
+    "unnamed_60": {
+      "type": "string",
+      "description": "Classification for serum Lactate (0,5-2,2mmol/l) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "e",
+        "l",
+        "n"
+      ]
+    },
+    "lactat_pyruvat_5_15": {
+      "type": "number",
+      "description": "lactat/pyruvat (5-15)"
+    },
+    "unnamed_62": {
+      "type": "string",
+      "description": "Classification for lactat/pyruvat (5-15) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "e",
+        "n"
+      ]
+    },
+    "pyruvat_serum_0_02_0_1_mmol_l": {
+      "type": "string",
+      "description": "pyruvat serum (0,02-0,1 mmol/L)"
+    },
+    "unnamed_64": {
+      "type": "string",
+      "description": "Classification for pyruvat serum (0,02-0,1 mmol/L) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "e",
+        "n"
+      ]
+    },
+    "ammonia_serum_11_32_mikromol_l": {
+      "type": "number",
+      "description": "ammonia serum (11-32 mikromol/l)"
+    },
+    "unnamed_66": {
+      "type": "string",
+      "description": "Classification for ammonia serum (11-32 mikromol/l) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "e",
+        "l",
+        "n",
+        "w"
+      ]
+    },
+    "urine_lactate_0_5_2_2mmol": {
+      "type": "number",
+      "description": "urine lactate (0,5-2,2mmol)"
+    },
+    "unnamed_68": {
+      "type": "string",
+      "description": "Classification for urine lactate (0,5-2,2mmol) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "e",
+        "n"
+      ]
+    },
+    "urine_3_hydroxy_butyric_acid_0_03_0_29mmol_l": {
+      "type": "string",
+      "description": "Urine 3\u2010hydroxy butyric acid  (0,03-0,29mmol/l)"
+    },
+    "urine_2_3_dihydroxy_2_methylbutyric_acid": {
+      "type": "string",
+      "description": "Urine 2,3-dihydroxy-2-methylbutyric acid"
+    },
+    "uoa_excretion_of_krebs_cycle_intermediates_pyruvic_succinic_fumaric_2_ketoglutaric_and_citric_acid": {
+      "type": "string",
+      "description": "UOA: excretion of Krebs cycle intermediates (pyruvic, succinic, fumaric, 2-ketoglutaric and citric acid)"
+    },
+    "urin_3_mag_3_methylglutaconate": {
+      "type": "string",
+      "description": "Urin 3-MAG (3-methylglutaconate)"
+    },
+    "plasma_amino_acid": {
+      "type": "string",
+      "description": "plasma amino acid"
+    },
+    "aclycarnitine_c5oh_0_2_0_5_mikromol_l": {
+      "type": "string",
+      "description": "aclycarnitine (C5OH) (0,2-0,5 mikromol/l)"
+    },
+    "ocr_oxygen_consumption_rate_in": {
+      "type": "number",
+      "description": "OCR (oxygen consumption rate) in %"
+    },
+    "unnamed_76": {
+      "type": "string",
+      "description": "Classification for OCR (oxygen consumption rate) in % (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "d",
+        "n"
+      ]
+    },
+    "complex_i_n_151_798_mu_ucox_muscle": {
+      "type": "number",
+      "description": "complex I (N\u00a0=\u00a0151\u2013798\u00a0mU/UCOX) MUSCLE!"
+    },
+    "unnamed_78": {
+      "type": "string",
+      "description": "Classification for complex I (N\u00a0=\u00a0151\u2013798\u00a0mU/UCOX) MUSCLE! (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "d",
+        "e",
+        "n"
+      ]
+    },
+    "complex_ii_sdh_n_229_593_mu_ucox": {
+      "type": "number",
+      "description": "complex II SDH (N\u00a0=\u00a0229\u2013593\u00a0mU/UCOX)"
+    },
+    "unnamed_80": {
+      "type": "string",
+      "description": "Classification for complex II SDH (N\u00a0=\u00a0229\u2013593\u00a0mU/UCOX) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "d",
+        "e",
+        "n"
+      ]
+    },
+    "complex_iii_n_1020_2530_mu_ucox": {
+      "type": "number",
+      "description": "complex III (N\u00a0=\u00a01020\u20132530\u00a0mU/UCOX)"
+    },
+    "unnamed_82": {
+      "type": "string",
+      "description": "Classification for complex III (N\u00a0=\u00a01020\u20132530\u00a0mU/UCOX) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "d",
+        "n"
+      ]
+    },
+    "complex_iv_cox_n_520_2080_mu_ucs": {
+      "type": "number",
+      "description": "complex IV COX  (N\u00a0=\u00a0520\u20132080\u00a0mU/UCS)"
+    },
+    "unnamed_84": {
+      "type": "string",
+      "description": "Classification for complex IV COX  (N\u00a0=\u00a0520\u20132080\u00a0mU/UCS) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "d",
+        "e",
+        "n"
+      ]
+    },
+    "atp_synthase_480_2700_mu_ucox": {
+      "type": "number",
+      "description": "ATP Synthase (480-2700 mU/UCOX)"
+    },
+    "unnamed_86": {
+      "type": "string",
+      "description": "Classification for ATP Synthase (480-2700 mU/UCOX) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "d",
+        "n"
+      ]
+    },
+    "pdh_n_28_89_mu_ucs": {
+      "type": "number",
+      "description": "PDH (N\u00a0=\u00a028\u201389\u00a0mU/UCS)"
+    },
+    "unnamed_88": {
+      "type": "string",
+      "description": "Classification for PDH (N\u00a0=\u00a028\u201389\u00a0mU/UCS) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "d",
+        "n"
+      ]
+    },
+    "citrate_synthase_n_45_187_mu_mg": {
+      "type": "number",
+      "description": "citrate synthase (N\u00a0=\u00a045\u2013187\u00a0mU/mg)"
+    },
+    "unnamed_90": {
+      "type": "string",
+      "description": "Classification for citrate synthase (N\u00a0=\u00a045\u2013187\u00a0mU/mg) (elevated/normal/low/decreased etc.)",
+      "enum": [
+        "d",
+        "e",
+        "n"
+      ]
+    },
+    "mrs_lactate": {
+      "type": "string",
+      "description": "MRS lactate"
+    },
+    "mri_basalganglia": {
+      "type": "string",
+      "description": "MRI basalganglia"
+    },
+    "mri_brainstem": {
+      "type": "string",
+      "description": "MRI brainstem"
+    },
+    "mri_white_matter": {
+      "type": "string",
+      "description": "MRI white matter"
+    },
+    "mri_thalamus": {
+      "type": "string",
+      "description": "MRI Thalamus"
+    },
+    "subthalamic_nuclei": {
+      "type": "string",
+      "description": "subthalamic nuclei"
+    },
+    "cerebellum": {
+      "type": "string",
+      "description": "cerebellum"
+    },
+    "corpus_callosum": {
+      "type": "string",
+      "description": "corpus callosum"
+    },
+    "spine_lesions": {
+      "type": "string",
+      "description": "spine lesions"
+    },
+    "nicht_n_her_bechriebene_mri_l_sionen": {
+      "type": "string",
+      "description": "nicht n\u00e4her bechriebene MRI l\u00e4sionen"
+    },
+    "hp_0001251_ataxia": {
+      "type": "number",
+      "description": "HP:0001251 ataxia"
+    },
+    "ataxia_1_symptom_2_never_acquired": {
+      "type": "number",
+      "description": "ataxia (1=Symptom, 2=never acquired)"
+    },
+    "hp_0000508_ptosis": {
+      "type": "number",
+      "description": "HP:0000508 ptosis"
+    },
+    "ptosis": {
+      "type": "number",
+      "description": "ptosis"
+    },
+    "hp_0002315_headache": {
+      "type": "number",
+      "description": "HP:0002315 headache"
+    },
+    "headache": {
+      "type": "number",
+      "description": "headache"
+    },
+    "hp_0002401_stroke_like_episodes": {
+      "type": "number",
+      "description": "HP:0002401 stroke like episodes"
+    },
+    "stroke_like_episodes": {
+      "type": "number",
+      "description": "stroke like episodes"
+    },
+    "hp_0001942_metabolic_acidosis": {
+      "type": "number",
+      "description": "HP:0001942 metabolic acidosis"
+    },
+    "metabolic_acidosis": {
+      "type": "number",
+      "description": "metabolic acidosis"
+    },
+    "hp_0002329_drowsiness": {
+      "type": "number",
+      "description": "HP:0002329 drowsiness"
+    },
+    "drowsiness": {
+      "type": "number",
+      "description": "drowsiness"
+    },
+    "hp_0004372_reduced_consciousness": {
+      "type": "number",
+      "description": "HP:0004372 reduced consciousness"
+    },
+    "consciousness": {
+      "type": "number",
+      "description": "consciousness"
+    },
+    "hp_0000741_apathic": {
+      "type": "number",
+      "description": "HP:0000741 apathic"
+    },
+    "apathic": {
+      "type": "number",
+      "description": "apathic"
+    },
+    "hp_0001276_hypertonia": {
+      "type": "number",
+      "description": "HP:0001276 hypertonia"
+    },
+    "hypertonia": {
+      "type": "number",
+      "description": "hypertonia"
+    },
+    "hp_0000713_agitation": {
+      "type": "number",
+      "description": "HP:0000713 agitation"
+    },
+    "agitation": {
+      "type": "number",
+      "description": " agitation"
+    },
+    "hp_0001252_hypotonia": {
+      "type": "number",
+      "description": "HP:0001252 hypotonia"
+    },
+    "hypotonia": {
+      "type": "number",
+      "description": "hypotonia"
+    },
+    "hp_0001332_dystonia": {
+      "type": "number",
+      "description": "HP:0001332 dystonia"
+    },
+    "dystonia": {
+      "type": "number",
+      "description": "dystonia"
+    },
+    "hp_0100660_hp_0002487_dyskinesia_hyperkinesia": {
+      "type": "number",
+      "description": "HP:0100660 / HP:0002487 dyskinesia/ hyperkinesia"
+    },
+    "dyskinesia_hyperkinesia": {
+      "type": "number",
+      "description": "dyskinesia/ hyperkinesia"
+    },
+    "hp_0001324_muscle_weakness": {
+      "type": "number",
+      "description": "HP:0001324 muscle weakness"
+    },
+    "muscle_weakness": {
+      "type": "number",
+      "description": "muscle weakness"
+    },
+    "hp_0003202_muscular_atrophy": {
+      "type": "number",
+      "description": "HP:0003202 muscular atrophy"
+    },
+    "muscular_atrophy": {
+      "type": "number",
+      "description": "muscular atrophy"
+    },
+    "hp_0003470_paralysis": {
+      "type": "number",
+      "description": "HP:0003470 paralysis"
+    },
+    "paresis": {
+      "type": "number",
+      "description": "paresis"
+    },
+    "hp_0001288_gait_disturbance": {
+      "type": "number",
+      "description": "HP:0001288 gait disturbance"
+    },
+    "gait_disturbance": {
+      "type": "number",
+      "description": "gait disturbance"
+    },
+    "hp_0003326_myalgia": {
+      "type": "number",
+      "description": "HP:0003326 myalgia"
+    },
+    "muscular_pain": {
+      "type": "number",
+      "description": "muscular pain"
+    },
+    "hp_0009830_peripheral_neuropathia": {
+      "type": "number",
+      "description": "HP:0009830 peripheral neuropathia"
+    },
+    "poly_neuropathy": {
+      "type": "number",
+      "description": "(poly)neuropathy"
+    },
+    "hp_0003401_par_sthesien": {
+      "type": "number",
+      "description": "HP:0003401 Par\u00e4sthesien"
+    },
+    "par_sthesien": {
+      "type": "number",
+      "description": "Par\u00e4sthesien"
+    },
+    "hp_0009088_speech_articulation_difficulties": {
+      "type": "number",
+      "description": " HP:0009088 Speech articulation difficulties"
+    },
+    "speech_disturbance": {
+      "type": "number",
+      "description": "speech disturbance"
+    },
+    "hp_0001260_dysarthria": {
+      "type": "number",
+      "description": "HP:0001260 dysarthria"
+    },
+    "dysarthria": {
+      "type": "number",
+      "description": "dysarthria"
+    },
+    "hp_0002015_dysphagia": {
+      "type": "number",
+      "description": "HP:0002015 dysphagia"
+    },
+    "dysphagia": {
+      "type": "number",
+      "description": "dysphagia"
+    },
+    "hp_0002381_aphasia": {
+      "type": "number",
+      "description": "HP:0002381 aphasia"
+    },
+    "aphasia": {
+      "type": "number",
+      "description": "aphasia"
+    },
+    "hp_0010535_sleep_apnea": {
+      "type": "number",
+      "description": "HP:0010535 sleep apnea"
+    },
+    "sleep_apnea": {
+      "type": "number",
+      "description": "sleep apnea"
+    },
+    "hp_0001695_cardiac_arrest": {
+      "type": "number",
+      "description": "HP:0001695 cardiac arrest"
+    },
+    "cardiac_arrest": {
+      "type": "number",
+      "description": "cardiac arrest"
+    },
+    "hp_0002094_dyspnea": {
+      "type": "number",
+      "description": "HP:0002094 dyspnea"
+    },
+    "dyspnea": {
+      "type": "number",
+      "description": "dyspnea"
+    },
+    "hp_0002878_respiratory_failure_distress": {
+      "type": "number",
+      "description": "HP:0002878 respiratory failure/distress"
+    },
+    "respiratory_failure_distress": {
+      "type": "number",
+      "description": "respiratory failure/distress"
+    },
+    "hp_0002791_hp_0002883_hypo_hyperventilation": {
+      "type": "number",
+      "description": "HP:0002791 / HP:0002883 hypo-/hyperventilation"
+    },
+    "hypo_hyperventilation": {
+      "type": "number",
+      "description": "hypo-/hyperventilation"
+    },
+    "hp_0010307_stridor": {
+      "type": "number",
+      "description": "HP:0010307 Stridor "
+    },
+    "noisy_breathing": {
+      "type": "number",
+      "description": "noisy breathing"
+    },
+    "hp_0012735_cough": {
+      "type": "number",
+      "description": "HP:0012735 cough"
+    },
+    "cough": {
+      "type": "number",
+      "description": "cough"
+    },
+    "hp_0000737_irritability": {
+      "type": "number",
+      "description": "HP:0000737 Irritability"
+    },
+    "crying_irritability": {
+      "type": "number",
+      "description": "crying/irritability"
+    },
+    "hp_0000648_optic_atrophy": {
+      "type": "number",
+      "description": "HP:0000648 optic atrophy"
+    },
+    "optic_atrophy": {
+      "type": "number",
+      "description": "optic atrophy"
+    },
+    "hp_0012373_abnormal_eye_physiology": {
+      "type": "number",
+      "description": "HP:0012373 abnormal eye physiology"
+    },
+    "ophthalmic_strabismus_ophthalmoplegie_amblyopia_visual_pathway_compromise": {
+      "type": "number",
+      "description": "ophthalmic (strabismus, ophthalmoplegie, amblyopia, visual pathway compromise, \u2026)"
+    },
+    "hp_0000639_nystagmus": {
+      "type": "number",
+      "description": "HP:0000639 nystagmus"
+    },
+    "nystagmus": {
+      "type": "number",
+      "description": "nystagmus"
+    },
+    "hp_0000365_hearing_impairment": {
+      "type": "number",
+      "description": "HP:0000365 hearing impairment"
+    },
+    "hearing_impairment": {
+      "type": "number",
+      "description": "hearing impairment"
+    },
+    "hp_0000360_tinnitus": {
+      "type": "number",
+      "description": "HP:0000360 tinnitus"
+    },
+    "tinnitus": {
+      "type": "number",
+      "description": "tinnitus"
+    },
+    "hp_0002300_mutism": {
+      "type": "number",
+      "description": "HP:0002300 mutism"
+    },
+    "mutism": {
+      "type": "number",
+      "description": "mutism"
+    },
+    "hp_0100543_cognitive_impairment_regress_learning_difficulties_intellectual_disability": {
+      "type": "number",
+      "description": "HP:0100543 cognitive impairment/ regress/ learning difficulties/ intellectual disability"
+    },
+    "cognitive_impairment_regress_learning_difficulties_intellectual_disability": {
+      "type": "number",
+      "description": "cognitive impairment/ regress/ learning difficulties/ intellectual disability"
+    },
+    "hp_0000709_psychosis": {
+      "type": "number",
+      "description": "HP:0000709 psychosis"
+    },
+    "psychosis_hallucinations_behaviorial_disorder": {
+      "type": "number",
+      "description": "psychosis/hallucinations/behaviorial disorder"
+    },
+    "hp_0002360_sleep_abnormality": {
+      "type": "number",
+      "description": "HP:0002360 sleep abnormality"
+    },
+    "sleep_disorders": {
+      "type": "number",
+      "description": "sleep disorders"
+    },
+    "hp_0001943_hypoglycaemia": {
+      "type": "number",
+      "description": "HP:0001943 hypoglycaemia"
+    },
+    "hypoglycaemia": {
+      "type": "number",
+      "description": "hypoglycaemia"
+    },
+    "hp_0011968_feeding_difficulties": {
+      "type": "number",
+      "description": "HP:0011968 feeding difficulties"
+    },
+    "feeding_difficulties": {
+      "type": "number",
+      "description": "feeding difficulties"
+    },
+    "hp_0001508_failure_to_thrive": {
+      "type": "number",
+      "description": " HP:0001508 failure to thrive"
+    },
+    "failure_to_thrive": {
+      "type": "number",
+      "description": "failure to thrive"
+    },
+    "hp_0001510_growth_delay": {
+      "type": "number",
+      "description": "HP:0001510 Growth delay"
+    },
+    "growht_retardation": {
+      "type": "number",
+      "description": "growht retardation"
+    },
+    "hp_0007018_adhd": {
+      "type": "number",
+      "description": "HP:0007018 ADHD"
+    },
+    "adhd": {
+      "type": "number",
+      "description": "ADHD"
+    },
+    "hp_0001263_global_developmental_delay": {
+      "type": "number",
+      "description": "HP:0001263 global developmental delay"
+    },
+    "gdd": {
+      "type": "number",
+      "description": "GDD"
+    },
+    "hp_0002376_developmental_regression": {
+      "type": "number",
+      "description": "HP:0002376 developmental regression"
+    },
+    "developmental_regression": {
+      "type": "number",
+      "description": "developmental regression"
+    },
+    "hp_0001270_motor_delay": {
+      "type": "number",
+      "description": "HP:0001270 Motor delay "
+    },
+    "motor_delay": {
+      "type": "number",
+      "description": "motor delay"
+    },
+    "hp_0000750_delayed_speech_development": {
+      "type": "number",
+      "description": "HP:0000750 delayed speech development"
+    },
+    "delayed_speech_development": {
+      "type": "number",
+      "description": "delayed speech development"
+    },
+    "hp_0033044_motor_regression": {
+      "type": "number",
+      "description": "HP:0033044 motor regression"
+    },
+    "motor_regression": {
+      "type": "number",
+      "description": "motor regression"
+    },
+    "hp_0002505": {
+      "type": "number",
+      "description": "HP:0002505"
+    },
+    "loss_of_ambulation_wheelchair_bound_immobilised_only_crawling_bedridden": {
+      "type": "number",
+      "description": "loss of ambulation (wheelchair bound/ immobilised/ only crawling/ bedridden)"
+    },
+    "hp_0033454_lost_eating": {
+      "type": "number",
+      "description": "HP:0033454 lost eating"
+    },
+    "lost_eating_tube_feeding": {
+      "type": "number",
+      "description": "lost eating (tube feeding)"
+    },
+    "hp_0031058": {
+      "type": "number",
+      "description": "HP:0031058"
+    },
+    "lost_selfcare_toilet_training_impairment_of_activities_of_daily_living": {
+      "type": "number",
+      "description": "(lost selfcare/toilet training) Impairment of activities of daily living "
+    },
+    "hp_0002371": {
+      "type": "number",
+      "description": "HP:0002371"
+    },
+    "loss_of_speech": {
+      "type": "number",
+      "description": "loss of speech"
+    },
+    "hp_0004887": {
+      "type": "number",
+      "description": "HP:0004887"
+    },
+    "lost_spontaneous_breathing_respiratory_failure_requiring_assisted_ventilation": {
+      "type": "number",
+      "description": "(lost spontaneous breathing) Respiratory failure requiring assisted ventilation"
+    },
+    "hp_0012378": {
+      "type": "number",
+      "description": "HP:0012378"
+    },
+    "easy_fatigability_prostration": {
+      "type": "number",
+      "description": "easy fatigability/ prostration"
+    },
+    "hp_0031826_abnormal_reflexes": {
+      "type": "number",
+      "description": "HP:0031826 abnormal reflexes"
+    },
+    "abnormal_reflex": {
+      "type": "number",
+      "description": "abnormal reflex"
+    },
+    "hp_0002804": {
+      "type": "number",
+      "description": "HP:0002804"
+    },
+    "amc": {
+      "type": "number",
+      "description": "AMC"
+    },
+    "hp_0001382": {
+      "type": "number",
+      "description": "HP:0001382"
+    },
+    "joint_hypermobility": {
+      "type": "number",
+      "description": "joint hypermobility"
+    },
+    "hp_0002829": {
+      "type": "number",
+      "description": "HP:0002829"
+    },
+    "joint_pain_arthralgia": {
+      "type": "number",
+      "description": "joint pain (Arthralgia)"
+    },
+    "hp_0003394": {
+      "type": "number",
+      "description": "HP:0003394"
+    },
+    "muscle_spasm": {
+      "type": "number",
+      "description": "muscle spasm"
+    },
+    "hp_0002179": {
+      "type": "number",
+      "description": "HP:0002179"
+    },
+    "opisthotonus": {
+      "type": "number",
+      "description": "Opisthotonus"
+    },
+    "hp_6000950": {
+      "type": "number",
+      "description": "HP:6000950"
+    },
+    "breath_holding_starring_spells_stupor": {
+      "type": "number",
+      "description": "breath holding/starring spells/Stupor"
+    },
+    "hp_0001250_seizures": {
+      "type": "number",
+      "description": "HP:0001250 seizures"
+    },
+    "seizures_absences": {
+      "type": "number",
+      "description": "seizures/absences"
+    },
+    "hp_0002373": {
+      "type": "number",
+      "description": "HP:0002373"
+    },
+    "febrile_seizures": {
+      "type": "number",
+      "description": "febrile seizures"
+    },
+    "hp_0001337": {
+      "type": "number",
+      "description": "HP:0001337"
+    },
+    "tremor": {
+      "type": "number",
+      "description": "tremor"
+    },
+    "hp_0002359": {
+      "type": "number",
+      "description": "HP:0002359"
+    },
+    "frequent_falls": {
+      "type": "number",
+      "description": "frequent falls"
+    },
+    "hp_0002312": {
+      "type": "number",
+      "description": "HP:0002312"
+    },
+    "clumsiness": {
+      "type": "number",
+      "description": "clumsiness"
+    },
+    "hp_0002067": {
+      "type": "number",
+      "description": "HP:0002067"
+    },
+    "parkinsonism_bradykinesia": {
+      "type": "number",
+      "description": "parkinsonism/ bradykinesia"
+    },
+    "hp_0002072": {
+      "type": "number",
+      "description": "HP:0002072"
+    },
+    "chorea": {
+      "type": "number",
+      "description": "chorea"
+    },
+    "hp_0006824": {
+      "type": "number",
+      "description": "HP:0006824"
+    },
+    "hirnnerven_l_hmung": {
+      "type": "number",
+      "description": "Hirnnerven L\u00e4hmung"
+    },
+    "hp_0001298": {
+      "type": "number",
+      "description": "HP:0001298"
+    },
+    "encephalopathia": {
+      "type": "number",
+      "description": "encephalopathia"
+    },
+    "hp_0005297": {
+      "type": "number",
+      "description": "HP:0005297"
+    },
+    "vascular_stenosis": {
+      "type": "number",
+      "description": "vascular stenosis"
+    },
+    "hp_0001637": {
+      "type": "number",
+      "description": "HP:0001637"
+    },
+    "myocardic_dysfunction_cardiomyopathy": {
+      "type": "number",
+      "description": "myocardic dysfunction/ cardiomyopathy"
+    },
+    "hp_0000822": {
+      "type": "number",
+      "description": "HP:0000822"
+    },
+    "hypertension": {
+      "type": "number",
+      "description": "hypertension"
+    },
+    "hp_0012332": {
+      "type": "number",
+      "description": "HP:0012332"
+    },
+    "autonomic_dysfunction_hpertonus_tachycardia": {
+      "type": "number",
+      "description": "autonomic dysfunction (hpertonus, tachycardia, \u2026)"
+    },
+    "hp_0002017": {
+      "type": "number",
+      "description": "HP:0002017"
+    },
+    "nausea_vomiting": {
+      "type": "number",
+      "description": "nausea/vomiting"
+    },
+    "hp_0002321": {
+      "type": "number",
+      "description": "HP:0002321"
+    },
+    "vertigo": {
+      "type": "number",
+      "description": "vertigo"
+    },
+    "hp_0001254": {
+      "type": "number",
+      "description": "HP:0001254"
+    },
+    "lethargy": {
+      "type": "number",
+      "description": "lethargy"
+    },
+    "hp_0002591": {
+      "type": "number",
+      "description": "HP:0002591"
+    },
+    "increased_appetite": {
+      "type": "number",
+      "description": "increased appetite"
+    },
+    "hp_0004324": {
+      "type": "number",
+      "description": "HP:0004324"
+    },
+    "weight_gain": {
+      "type": "number",
+      "description": "weight gain"
+    },
+    "hp_0003074": {
+      "type": "number",
+      "description": "HP:0003074"
+    },
+    "diabetes_hyperglycaemia": {
+      "type": "number",
+      "description": "diabetes/hyperglycaemia"
+    },
+    "hp_0001410_hepatopathy": {
+      "type": "number",
+      "description": "HP:0001410 Hepatopathy"
+    },
+    "hepatitis_liver_failure_newborne_jaundice": {
+      "type": "number",
+      "description": "hepatitis/liver failure/ (newborne) jaundice"
+    },
+    "hp_0000083": {
+      "type": "number",
+      "description": "HP:0000083"
+    },
+    "renal_siadh": {
+      "type": "number",
+      "description": "renal/ SIADH"
+    },
+    "hp_0011458": {
+      "type": "number",
+      "description": "HP:0011458"
+    },
+    "abdominal": {
+      "type": "number",
+      "description": "abdominal"
+    },
+    "hp_0002014": {
+      "type": "number",
+      "description": "HP:0002014"
+    },
+    "diarrhea": {
+      "type": "number",
+      "description": "diarrhea"
+    },
+    "hp_0031064": {
+      "type": "number",
+      "description": "HP:0031064"
+    },
+    "harn_stuhlinkontinenz": {
+      "type": "number",
+      "description": "Harn-/ Stuhlinkontinenz"
+    },
+    "hp_0011122": {
+      "type": "number",
+      "description": "HP:0011122"
+    },
+    "skin": {
+      "type": "number",
+      "description": "skin"
+    },
+    "hp_0000998": {
+      "type": "number",
+      "description": "HP:0000998"
+    },
+    "hypertrichosis": {
+      "type": "number",
+      "description": "hypertrichosis"
+    },
+    "hp_0002240": {
+      "type": "number",
+      "description": "HP:0002240"
+    },
+    "hepatomegaly": {
+      "type": "number",
+      "description": "hepatomegaly"
+    },
+    "hp_0003115": {
+      "type": "number",
+      "description": "HP:0003115"
+    },
+    "ekg_alteration_tachy_or_bradykardie": {
+      "type": "number",
+      "description": "EKG alteration/ Tachy- or Bradykardie"
+    },
+    "hp_0000135": {
+      "type": "number",
+      "description": "HP:0000135"
+    },
+    "hypogonadism": {
+      "type": "number",
+      "description": "hypogonadism"
+    },
+    "hp_0003330": {
+      "type": "number",
+      "description": "HP:0003330"
+    },
+    "abnormal_bone_structure_reduced_bone_age_osteopenia": {
+      "type": "number",
+      "description": "abnormal bone structure/ reduced bone age/ osteopenia"
+    },
+    "hp_0000238": {
+      "type": "number",
+      "description": "HP:0000238"
+    },
+    "hydrocephalus": {
+      "type": "number",
+      "description": "hydrocephalus"
+    },
+    "hp_0002664": {
+      "type": "number",
+      "description": "HP:0002664"
+    },
+    "cancer_neoplasm": {
+      "type": "number",
+      "description": "Cancer (neoplasm)"
+    },
+    "comments": {
+      "type": "string",
+      "description": "comments"
+    }
+  },
+  "required": [
+    "pmid",
+    "patient_id"
+  ]
+}

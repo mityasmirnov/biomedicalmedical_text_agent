@@ -1,0 +1,403 @@
+{
+  "component_initialization": {
+    "status": "PASSED",
+    "components_initialized": 6
+  },
+  "document_processing": {
+    "status": "PASSED",
+    "document_title": "Eleven novel mutations and clinical characteristics in seven Chinese patients with thiamine metabolism dysfunction syndrome",
+    "content_length": 46616,
+    "segments_found": 20
+  },
+  "extraction_pipeline": {
+    "status": "PASSED",
+    "records_extracted": 15,
+    "processing_time": 286.5088655948639,
+    "warnings": 5,
+    "field_coverage": {
+      "pmid": {
+        "count": 15,
+        "percentage": 100.0
+      },
+      "patient_id": {
+        "count": 15,
+        "percentage": 100.0
+      },
+      "gene": {
+        "count": 1,
+        "percentage": 6.666666666666667
+      },
+      "mutations": {
+        "count": 1,
+        "percentage": 6.666666666666667
+      }
+    }
+  },
+  "database_operations": {
+    "status": "FAILED",
+    "error": "Storage failed: Failed to store patient records: 'PatientRecord' object has no attribute 'validation_status'"
+  },
+  "ontology_integration": {
+    "status": "PASSED",
+    "hpo_normalizations": 4,
+    "gene_normalizations": 5
+  },
+  "rag_system": {
+    "status": "FAILED",
+    "questions_answered": 0,
+    "total_questions": 3
+  },
+  "ground_truth_comparison": {
+    "status": "PASSED",
+    "ground_truth_records": 7,
+    "extracted_records": 15,
+    "comparison_results": {
+      "common_fields": [
+        "vertigo",
+        "lost7",
+        "hypoglycaemia",
+        "age2",
+        "score3",
+        "hypogonadism",
+        "score5",
+        "clumsiness",
+        "hypertrichosis",
+        "ptosis",
+        "chorea",
+        "hypotonia",
+        "mutism",
+        "cough",
+        "gene",
+        "diarrhea",
+        "hypertonia",
+        "apathic",
+        "lost2",
+        "age4",
+        "dysphagia",
+        "hepatomegaly",
+        "score6",
+        "score2",
+        "encephalopathia",
+        "lost5",
+        "tinnitus",
+        "hydrocephalus",
+        "abdominal",
+        "lost3",
+        "aphasia",
+        "headache",
+        "drowsiness",
+        "dysarthria",
+        "score4",
+        "lethargy",
+        "lost4",
+        "sex",
+        "age7",
+        "score7",
+        "hypertension",
+        "age1",
+        "age6",
+        "dyspnea",
+        "consciousness",
+        "dystonia",
+        "age3",
+        "lost6",
+        "comments",
+        "paresis",
+        "cerebellum",
+        "mutations",
+        "tremor",
+        "skin",
+        "lost1",
+        "nystagmus",
+        "age5"
+      ],
+      "field_comparisons": {
+        "vertigo": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "lost7": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "hypoglycaemia": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "age2": {
+          "ground_truth_count": 1,
+          "extracted_count": 0,
+          "coverage": 0.0
+        },
+        "score3": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "hypogonadism": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "score5": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "clumsiness": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "hypertrichosis": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "ptosis": {
+          "ground_truth_count": 1,
+          "extracted_count": 0,
+          "coverage": 0.0
+        },
+        "chorea": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "hypotonia": {
+          "ground_truth_count": 3,
+          "extracted_count": 0,
+          "coverage": 0.0
+        },
+        "mutism": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "cough": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "gene": {
+          "ground_truth_count": 7,
+          "extracted_count": 15,
+          "coverage": 2.142857142857143
+        },
+        "diarrhea": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "hypertonia": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "apathic": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "lost2": {
+          "ground_truth_count": 1,
+          "extracted_count": 0,
+          "coverage": 0.0
+        },
+        "age4": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "dysphagia": {
+          "ground_truth_count": 1,
+          "extracted_count": 0,
+          "coverage": 0.0
+        },
+        "hepatomegaly": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "score6": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "score2": {
+          "ground_truth_count": 1,
+          "extracted_count": 0,
+          "coverage": 0.0
+        },
+        "encephalopathia": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "lost5": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "tinnitus": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "hydrocephalus": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "abdominal": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "lost3": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "aphasia": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "headache": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "drowsiness": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "dysarthria": {
+          "ground_truth_count": 2,
+          "extracted_count": 0,
+          "coverage": 0.0
+        },
+        "score4": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "lethargy": {
+          "ground_truth_count": 2,
+          "extracted_count": 0,
+          "coverage": 0.0
+        },
+        "lost4": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "sex": {
+          "ground_truth_count": 7,
+          "extracted_count": 15,
+          "coverage": 2.142857142857143
+        },
+        "age7": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "score7": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "hypertension": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "age1": {
+          "ground_truth_count": 5,
+          "extracted_count": 0,
+          "coverage": 0.0
+        },
+        "age6": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "dyspnea": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "consciousness": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "dystonia": {
+          "ground_truth_count": 2,
+          "extracted_count": 0,
+          "coverage": 0.0
+        },
+        "age3": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "lost6": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "comments": {
+          "ground_truth_count": 4,
+          "extracted_count": 15,
+          "coverage": 3.75
+        },
+        "paresis": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "cerebellum": {
+          "ground_truth_count": 2,
+          "extracted_count": 15,
+          "coverage": 7.5
+        },
+        "mutations": {
+          "ground_truth_count": 7,
+          "extracted_count": 15,
+          "coverage": 2.142857142857143
+        },
+        "tremor": {
+          "ground_truth_count": 2,
+          "extracted_count": 0,
+          "coverage": 0.0
+        },
+        "skin": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "lost1": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        },
+        "nystagmus": {
+          "ground_truth_count": 1,
+          "extracted_count": 0,
+          "coverage": 0.0
+        },
+        "age5": {
+          "ground_truth_count": 0,
+          "extracted_count": 0,
+          "coverage": 0
+        }
+      }
+    }
+  }
+}
