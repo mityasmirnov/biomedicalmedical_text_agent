@@ -38,6 +38,13 @@ class LLMConfig(BaseSettings):
     max_tokens: int = Field(default=2000, env="LLM_MAX_TOKENS")
     timeout: int = Field(default=60, env="LLM_TIMEOUT")
     
+    # API Usage Limits and Tracking
+    max_requests_per_minute: int = Field(default=60, env="MAX_REQUESTS_PER_MINUTE")
+    max_requests_per_day: int = Field(default=1000, env="MAX_REQUESTS_PER_DAY")
+    max_requests_per_month: int = Field(default=30000, env="MAX_REQUESTS_PER_MONTH")
+    enable_usage_tracking: bool = Field(default=True, env="ENABLE_USAGE_TRACKING")
+    usage_database_path: str = Field(default="./data/api_usage.db", env="USAGE_DATABASE_PATH")
+    
     # No env_prefix to allow direct environment variable names
 
 class VectorDBConfig(BaseSettings):

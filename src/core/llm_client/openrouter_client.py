@@ -10,6 +10,7 @@ import asyncio
 from core.base import BaseLLMClient, ProcessingResult, LLMError
 from core.config import get_config
 from core.logging_config import get_logger
+from core.api_usage_tracker import APIUsageTracker, APIUsageRecord
 
 log = get_logger(__name__)
 
@@ -33,8 +34,21 @@ class OpenRouterClient(BaseLLMClient):
         self.timeout = app_config.llm.timeout
         
         # Rate limiting
-        self.max_requests_per_minute = self.get_config("max_requests_per_minute", 60)
+        self.max_requests_per_minute = app_config.llm.max_requests_per_minute
         self.request_timestamps = []
+        
+        # API usage tracking
+        self.usage_tracker = None
+        if app_config.llm.enable_usage_tracking:
+            try:
+                self.usage_tracker = APIUsageTracker(app_config.llm.usage_database_path)
+                log.info("API usage tracking enabled")
+            except Exception as e:
+                log.warning(f"Failed to initialize API usage tracker: {e}")
+        
+        # Usage limits
+        self.daily_limit = app_config.llm.max_requests_per_day
+        self.monthly_limit = app_config.llm.max_requests_per_month
         
         log.info(f"Initialized OpenRouter client for model: {self.model_name}")
     
@@ -46,6 +60,37 @@ class OpenRouterClient(BaseLLMClient):
             "HTTP-Referer": "https://biomedical-extraction-engine.com",
             "X-Title": "Biomedical Data Extraction Engine"
         }
+    
+    async def _check_usage_limits(self) -> bool:
+        """Check if usage limits allow the request to proceed."""
+        if not self.usage_tracker:
+            return True
+        
+        try:
+            # Check daily limit
+            can_proceed, current_usage, remaining = self.usage_tracker.check_daily_limit(
+                "openrouter", self.daily_limit
+            )
+            
+            if not can_proceed:
+                log.warning(f"Daily limit reached: {current_usage}/{self.daily_limit} requests")
+                return False
+            
+            # Check monthly limit
+            can_proceed, current_usage, remaining = self.usage_tracker.check_monthly_limit(
+                "openrouter", self.monthly_limit
+            )
+            
+            if not can_proceed:
+                log.warning(f"Monthly limit reached: {current_usage}/{self.monthly_limit} requests")
+                return False
+            
+            log.debug(f"Usage limits check passed. Daily: {remaining} remaining, Monthly: {remaining} remaining")
+            return True
+            
+        except Exception as e:
+            log.error(f"Failed to check usage limits: {e}")
+            return True  # Allow request if check fails
     
     async def generate(
         self,
@@ -68,7 +113,16 @@ class OpenRouterClient(BaseLLMClient):
         Returns:
             ProcessingResult containing generated text
         """
+        start_time = time.time()
+        
         try:
+            # Check usage limits first
+            if not await self._check_usage_limits():
+                return ProcessingResult(
+                    success=False,
+                    error="API usage limit reached. Please try again later or upgrade your plan."
+                )
+            
             # Rate limiting
             await self._check_rate_limit()
             
@@ -87,8 +141,6 @@ class OpenRouterClient(BaseLLMClient):
                 **kwargs
             }
             
-            start_time = time.time()
-            
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
                     f"{self.api_base}/chat/completions",
@@ -103,6 +155,10 @@ class OpenRouterClient(BaseLLMClient):
             
             # Extract generated text
             if "choices" not in result or not result["choices"]:
+                # Record failed request
+                if self.usage_tracker:
+                    self._record_api_usage(False, 0, 0, 0, 0.0, "No choices returned from API")
+                
                 return ProcessingResult(
                     success=False,
                     error="No choices returned from API"
@@ -112,6 +168,16 @@ class OpenRouterClient(BaseLLMClient):
             
             # Extract usage information
             usage = result.get("usage", {})
+            prompt_tokens = usage.get("prompt_tokens", 0)
+            completion_tokens = usage.get("completion_tokens", 0)
+            total_tokens = usage.get("total_tokens", 0)
+            
+            # Estimate cost
+            estimated_cost = self.estimate_cost(prompt_tokens, completion_tokens)
+            
+            # Record successful request
+            if self.usage_tracker:
+                self._record_api_usage(True, prompt_tokens, completion_tokens, total_tokens, estimated_cost)
             
             log.debug(f"Generated {len(generated_text)} characters in {processing_time:.2f}s")
             
@@ -122,15 +188,21 @@ class OpenRouterClient(BaseLLMClient):
                 metadata={
                     "model": self.model_name,
                     "usage": usage,
-                    "prompt_tokens": usage.get("prompt_tokens", 0),
-                    "completion_tokens": usage.get("completion_tokens", 0),
-                    "total_tokens": usage.get("total_tokens", 0)
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": total_tokens,
+                    "estimated_cost": estimated_cost
                 }
             )
             
         except httpx.HTTPStatusError as e:
             error_msg = f"HTTP error {e.response.status_code}: {e.response.text}"
             log.error(f"OpenRouter API error: {error_msg}")
+            
+            # Record failed request
+            if self.usage_tracker:
+                self._record_api_usage(False, 0, 0, 0, 0.0, error_msg)
+            
             return ProcessingResult(
                 success=False,
                 error=error_msg
@@ -138,6 +210,11 @@ class OpenRouterClient(BaseLLMClient):
         except httpx.TimeoutException:
             error_msg = f"Request timeout after {self.timeout}s"
             log.error(error_msg)
+            
+            # Record failed request
+            if self.usage_tracker:
+                self._record_api_usage(False, 0, 0, 0, 0.0, error_msg)
+            
             return ProcessingResult(
                 success=False,
                 error=error_msg
@@ -145,10 +222,80 @@ class OpenRouterClient(BaseLLMClient):
         except Exception as e:
             error_msg = f"Unexpected error: {str(e)}"
             log.error(f"OpenRouter client error: {error_msg}")
+            
+            # Record failed request
+            if self.usage_tracker:
+                self._record_api_usage(False, 0, 0, 0, 0.0, error_msg)
+            
             return ProcessingResult(
                 success=False,
                 error=error_msg
             )
+    
+    def _record_api_usage(self, success: bool, prompt_tokens: int, completion_tokens: int, 
+                          total_tokens: int, cost: float, error_message: str = None):
+        """Record API usage in the tracker."""
+        if not self.usage_tracker:
+            return
+        
+        try:
+            record = APIUsageRecord(
+                timestamp=time.time(),
+                api_provider="openrouter",
+                model=self.model_name,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
+                cost=cost,
+                success=success,
+                error_message=error_message,
+                request_id=f"openrouter_{int(time.time() * 1000)}"
+            )
+            
+            self.usage_tracker.record_request(record)
+            
+        except Exception as e:
+            log.error(f"Failed to record API usage: {e}")
+    
+    def get_usage_stats(self, days: int = 30):
+        """Get usage statistics for OpenRouter API."""
+        if not self.usage_tracker:
+            return None
+        
+        try:
+            return self.usage_tracker.get_usage_stats("openrouter", days)
+        except Exception as e:
+            log.error(f"Failed to get usage stats: {e}")
+            return None
+    
+    def get_remaining_requests(self) -> Dict[str, int]:
+        """Get remaining requests for daily and monthly limits."""
+        if not self.usage_tracker:
+            return {"daily": self.daily_limit, "monthly": self.monthly_limit}
+        
+        try:
+            _, _, daily_remaining = self.usage_tracker.check_daily_limit("openrouter", self.daily_limit)
+            _, _, monthly_remaining = self.usage_tracker.check_monthly_limit("openrouter", self.monthly_limit)
+            
+            return {
+                "daily": daily_remaining,
+                "monthly": monthly_remaining
+            }
+        except Exception as e:
+            log.error(f"Failed to get remaining requests: {e}")
+            return {"daily": self.daily_limit, "monthly": self.monthly_limit}
+    
+    def export_usage_data(self, output_path: str, format: str = "csv"):
+        """Export usage data to a file."""
+        if not self.usage_tracker:
+            log.warning("Usage tracking not enabled")
+            return False
+        
+        try:
+            return self.usage_tracker.export_usage_data(output_path, format)
+        except Exception as e:
+            log.error(f"Failed to export usage data: {e}")
+            return False
     
     def generate_sync(
         self,
