@@ -59,6 +59,16 @@ class LLMConfig(BaseSettings):
     huggingface_device: str = Field(default="auto", env="HUGGINGFACE_DEVICE")
     huggingface_quantization: bool = Field(default=True, env="HUGGINGFACE_QUANTIZATION")
     
+    # PubMed Configuration
+    pubmed_email: str = Field(default="", env="PUBMED_EMAIL")
+    pubmed_api_key: str = Field(default="", env="PUBMED_API_KEY")
+    
+    # Europe PMC Configuration
+    europepmc_email: str = Field(default="", env="EUROPEPMC_EMAIL")
+    
+    # UMLS Configuration
+    umls_api_key: str = Field(default="", env="UMLS_API_KEY")
+    
     # No env_prefix to allow direct environment variable names
 
 class VectorDBConfig(BaseSettings):

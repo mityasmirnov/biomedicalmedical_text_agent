@@ -195,6 +195,105 @@ def run_providers():
         print(f"❌ Provider status check failed: {e}")
         sys.exit(1)
 
+async def run_metadata_triage(query, max_results=500, include_europepmc=True, output_dir=None, save_intermediate=True):
+    """Run metadata triage pipeline for biomedical literature search."""
+    try:
+        from metadata_triage.metadata_orchestrator import MetadataOrchestrator
+        from core.llm_client.smart_llm_manager import SmartLLMManager
+        from ontologies.hpo_manager_optimized import OptimizedHPOManager as HPOManager
+        from core.config import get_config
+        
+        print("🔍 Metadata Triage Pipeline")
+        print("=" * 50)
+        
+        # Initialize components
+        print("🚀 Initializing components...")
+        
+        # Initialize smart LLM manager
+        llm_client = SmartLLMManager()
+        print(f"✅ LLM Manager: {llm_client.get_current_provider()}")
+        
+        # Initialize HPO manager
+        hpo_manager = HPOManager("data/ontologies/hpo/hp.json")
+        print("✅ HPO Manager initialized")
+        
+        # Get configuration
+        config = get_config()
+        
+        # Initialize metadata orchestrator
+        orchestrator = MetadataOrchestrator(
+            llm_client=llm_client,
+            hpo_manager=hpo_manager,
+            umls_api_key=config.llm.umls_api_key if hasattr(config.llm, 'umls_api_key') else None,
+            pubmed_email=config.llm.pubmed_email if hasattr(config.llm, 'pubmed_email') else None,
+            pubmed_api_key=config.llm.pubmed_api_key if hasattr(config.llm, 'pubmed_api_key') else None,
+            europepmc_email=config.llm.europepmc_email if hasattr(config.llm, 'europepmc_email') else None
+        )
+        print("✅ Metadata Orchestrator initialized")
+        
+        # Set output directory
+        if not output_dir:
+            output_dir = f"data/metadata_triage/{query.replace(' ', '_').lower()}"
+        
+        print(f"📁 Output directory: {output_dir}")
+        print(f"🔍 Query: {query}")
+        print(f"📊 Max results: {max_results}")
+        print(f"🌍 Include Europe PMC: {include_europepmc}")
+        print()
+        
+        # Run the complete pipeline
+        print("🔄 Running metadata triage pipeline...")
+        results = await orchestrator.run_complete_pipeline(
+            query=query,
+            max_results=max_results,
+            include_europepmc=include_europepmc,
+            output_dir=output_dir,
+            save_intermediate=save_intermediate
+        )
+        
+        print("✅ Pipeline completed successfully!")
+        print()
+        
+        # Display summary
+        print("📊 Results Summary")
+        print("-" * 30)
+        if 'final_results' in results:
+            final_df = results['final_results']
+            print(f"📄 Total documents processed: {len(final_df)}")
+            
+            # Show top results
+            if len(final_df) > 0:
+                print("\n🏆 Top Results:")
+                top_results = final_df.head(5)
+                for idx, row in top_results.iterrows():
+                    title = row.get('Title', 'N/A')
+                    pmid = row.get('PMID', 'N/A')
+                    study_type = row.get('StudyType', 'N/A')
+                    clinical_relevance = row.get('ClinicalRelevance', 'N/A')
+                    priority_score = row.get('CombinedPriorityScore', 'N/A')
+                    
+                    # Format priority score
+                    if isinstance(priority_score, (int, float)):
+                        priority_str = f"{priority_score:.3f}"
+                    else:
+                        priority_str = str(priority_score)
+                    
+                    print(f"  {idx+1}. {title[:80]}...")
+                    print(f"     PMID: {pmid} | Priority: {priority_str}")
+                    print(f"     Type: {study_type} | Relevance: {clinical_relevance}")
+                    print()
+        else:
+            print("⚠️  No final results found in pipeline output")
+        
+        print(f"📁 Results saved to: {output_dir}")
+        print("🎉 Metadata triage completed!")
+        
+    except Exception as e:
+        print(f"❌ Metadata triage failed: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -207,6 +306,7 @@ Examples:
   python run_enhanced_system.py demo                      # Run demo extraction
   python run_enhanced_system.py usage                     # Check API usage
   python run_enhanced_system.py providers                 # Check LLM provider status
+  python run_enhanced_system.py metadata-triage "Leigh syndrome" --max-results 100  # Run metadata triage
         """
     )
     
@@ -228,6 +328,14 @@ Examples:
 
     # Providers command
     subparsers.add_parser('providers', help='Check status of all LLM providers and test their availability')
+
+    # Metadata Triage command
+    metadata_triage_parser = subparsers.add_parser('metadata-triage', help='Run metadata triage pipeline for biomedical literature search')
+    metadata_triage_parser.add_argument('query', help='Search query for metadata triage')
+    metadata_triage_parser.add_argument('--max-results', type=int, default=500, help='Maximum number of results to return')
+    metadata_triage_parser.add_argument('--include-europepmc', action='store_true', help='Include Europe PMC results')
+    metadata_triage_parser.add_argument('--output-dir', help='Output directory for triage results')
+    metadata_triage_parser.add_argument('--save-intermediate', action='store_true', help='Save intermediate results during triage')
     
     args = parser.parse_args()
     
@@ -245,6 +353,8 @@ Examples:
         run_usage()
     elif args.command == 'providers':
         run_providers()
+    elif args.command == 'metadata-triage':
+        asyncio.run(run_metadata_triage(args.query, args.max_results, args.include_europepmc, args.output_dir, args.save_intermediate))
     else:
         print(f"Unknown command: {args.command}")
         parser.print_help()

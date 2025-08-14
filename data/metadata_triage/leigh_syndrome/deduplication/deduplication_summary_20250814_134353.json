@@ -1,0 +1,20 @@
+{
+  "total_documents": 100,
+  "unique_documents": 99,
+  "duplicate_groups_count": 1,
+  "deduplication_rate": 0.01,
+  "statistics": {
+    "exact_duplicate_groups": 1,
+    "near_duplicate_groups": 0,
+    "total_duplicate_documents": 1,
+    "largest_duplicate_group": 1,
+    "average_group_size": 1.0,
+    "similarity_distribution": {
+      "0.95-1.00": 1,
+      "0.90-0.95": 0,
+      "0.85-0.90": 0,
+      "0.80-0.85": 0,
+      "below_0.80": 0
+    }
+  }
+}

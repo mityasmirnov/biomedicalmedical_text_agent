@@ -1,0 +1,64 @@
+[
+  {
+    "study_type": "basic_research",
+    "is_case_report": false,
+    "clinical_relevance": "medium",
+    "patient_count": null,
+    "confidence_score": 0.95,
+    "reasoning": "The abstract describes a laboratory study using wild-type cortical neurons isolated from embryonic day 18 rat embryos, which clearly indicates a basic research study. The focus is on understanding the formation of calcium-phosphate sheets and their potential link to neurological disorders, which has translational implications but does not involve human patients or clinical interventions. The study uses advanced imaging techniques (cryo-ET, cryo-CLEM, and LDSAED) to characterize the structure and origin of these aggregates, further supporting the basic research classification. The clinical relevance is medium because the findings could inform future therapeutic strategies for neurological disorders like Alzheimer's disease, but the study itself does not involve direct clinical application.",
+    "extracted_features": {
+      "mentions_patients": false,
+      "describes_treatment": false,
+      "reports_outcomes": false,
+      "includes_genetics": false,
+      "has_statistical_analysis": false,
+      "study_design_keywords": [],
+      "medical_specialties": [],
+      "case_report_indicators": 0,
+      "patient_count_estimates": [],
+      "clinical_relevance_score": 2.25
+    }
+  },
+  {
+    "study_type": "cohort_study",
+    "is_case_report": false,
+    "clinical_relevance": "medium",
+    "patient_count": 2820,
+    "confidence_score": 0.9,
+    "reasoning": "The study involves exome sequencing of a defined population (French-Canadian participants including IBD patients, parents, and controls) to characterize coding variation, which is characteristic of a cohort study. The focus on genetic features and variant enrichment in a specific population suggests a translational research context with implications for understanding disease mechanisms (medium clinical relevance). The study does not describe treatments or clinical outcomes but includes statistical analysis of genetic variants.",
+    "extracted_features": {
+      "mentions_patients": true,
+      "describes_treatment": false,
+      "reports_outcomes": false,
+      "includes_genetics": true,
+      "has_statistical_analysis": true,
+      "study_design_keywords": [
+        "cohort"
+      ],
+      "medical_specialties": [],
+      "case_report_indicators": 1,
+      "patient_count_estimates": [],
+      "clinical_relevance_score": 3.0
+    }
+  },
+  {
+    "study_type": "basic_research",
+    "is_case_report": false,
+    "clinical_relevance": "medium",
+    "patient_count": null,
+    "confidence_score": 0.9,
+    "reasoning": "The abstract describes the use of CRISPR/Cas9 to generate a zebrafish model for studying mitochondrial complex I deficiency, which is a preclinical, basic research approach. There is no mention of human patients or clinical trials, but the study has translational relevance as it aims to facilitate mechanistic studies and therapeutic screening for Leigh syndrome spectrum, a clinical condition. The focus on disease mechanisms and potential treatment (folic acid) places it in the medium clinical relevance category.",
+    "extracted_features": {
+      "mentions_patients": false,
+      "describes_treatment": true,
+      "reports_outcomes": true,
+      "includes_genetics": true,
+      "has_statistical_analysis": false,
+      "study_design_keywords": [],
+      "medical_specialties": [],
+      "case_report_indicators": 0,
+      "patient_count_estimates": [],
+      "clinical_relevance_score": 2.0
+    }
+  }
+]

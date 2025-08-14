@@ -1,0 +1,47 @@
+[
+  {
+    "study_type": "other",
+    "is_case_report": false,
+    "clinical_relevance": "low",
+    "patient_count": null,
+    "confidence_score": 0.0,
+    "reasoning": "Classification failed: SmartLLMManager.generate() missing 1 required positional argument: 'prompt'",
+    "extracted_features": {}
+  },
+  {
+    "study_type": "other",
+    "is_case_report": false,
+    "clinical_relevance": "low",
+    "patient_count": null,
+    "confidence_score": 0.0,
+    "reasoning": "Classification failed: SmartLLMManager.generate() missing 1 required positional argument: 'prompt'",
+    "extracted_features": {}
+  },
+  {
+    "study_type": "other",
+    "is_case_report": false,
+    "clinical_relevance": "low",
+    "patient_count": null,
+    "confidence_score": 0.0,
+    "reasoning": "Classification failed: SmartLLMManager.generate() missing 1 required positional argument: 'prompt'",
+    "extracted_features": {}
+  },
+  {
+    "study_type": "other",
+    "is_case_report": false,
+    "clinical_relevance": "low",
+    "patient_count": null,
+    "confidence_score": 0.0,
+    "reasoning": "Classification failed: SmartLLMManager.generate() missing 1 required positional argument: 'prompt'",
+    "extracted_features": {}
+  },
+  {
+    "study_type": "other",
+    "is_case_report": false,
+    "clinical_relevance": "low",
+    "patient_count": null,
+    "confidence_score": 0.0,
+    "reasoning": "Classification failed: SmartLLMManager.generate() missing 1 required positional argument: 'prompt'",
+    "extracted_features": {}
+  }
+]

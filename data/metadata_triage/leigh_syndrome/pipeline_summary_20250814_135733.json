@@ -1,0 +1,38 @@
+{
+  "pipeline_info": {
+    "query": "Leigh syndrome",
+    "execution_timestamp": "2025-08-14T14:00:36.882105",
+    "total_retrieved_documents": 100,
+    "unique_documents_after_deduplication": 99
+  },
+  "deduplication_stats": {
+    "duplicate_groups": 1,
+    "deduplication_rate": 0.01,
+    "exact_duplicates": 1,
+    "near_duplicates": 0
+  },
+  "classification_stats": {
+    "total_classified": 3,
+    "case_reports": 0,
+    "case_report_rate": 0.0,
+    "high_clinical_relevance": 0,
+    "high_relevance_rate": 0.0,
+    "average_confidence": 0.9166666666666666
+  },
+  "concept_scoring_stats": {
+    "total_scored": 3,
+    "high_priority_articles": 0,
+    "high_priority_rate": 0.0,
+    "average_concept_density": 4.255623404559574,
+    "average_priority_score": 0.48130294428166764
+  },
+  "final_results_stats": {
+    "total_ranked_articles": 3,
+    "top_10_percent_threshold": 0,
+    "case_reports_in_top_10_percent": 0,
+    "high_relevance_in_top_10_percent": 0
+  },
+  "recommendations": [
+    "Low case report rate (0.0%). Consider adding 'case report' to search terms."
+  ]
+}

@@ -1,0 +1,2 @@
+GroupID,PrimaryPMID,DuplicatePMID,SimilarityScore,DuplicateType,Reasoning
+exact_0b51b73c,40568126,40526718,1.0,exact,Exact content hash match (2 documents)

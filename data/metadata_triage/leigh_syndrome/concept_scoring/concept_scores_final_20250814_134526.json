@@ -1,0 +1,67 @@
+[
+  {
+    "total_concepts": 6,
+    "unique_concepts": 4,
+    "concept_density": 2.127659574468085,
+    "priority_score": 0.4425531914893617,
+    "semantic_categories": {
+      "Gene or Genome": 2,
+      "Medical Concept": 2
+    },
+    "reasoning": "Low concept density. (2.1 concepts per 100 words). Primary concept types: Gene or Genome, Medical Concept.",
+    "umls_concept_count": 6,
+    "hpo_concept_count": 0
+  },
+  {
+    "total_concepts": 6,
+    "unique_concepts": 5,
+    "concept_density": 2.7027027027027026,
+    "priority_score": 0.44833976833976835,
+    "semantic_categories": {
+      "Gene or Genome": 2,
+      "Medical Concept": 3
+    },
+    "reasoning": "Low concept density. (2.7 concepts per 100 words). Primary concept types: Medical Concept, Gene or Genome.",
+    "umls_concept_count": 6,
+    "hpo_concept_count": 0
+  },
+  {
+    "total_concepts": 6,
+    "unique_concepts": 5,
+    "concept_density": 7.936507936507936,
+    "priority_score": 0.553015873015873,
+    "semantic_categories": {
+      "Gene or Genome": 2,
+      "Medical Concept": 3
+    },
+    "reasoning": "Moderate concept density. (7.9 concepts per 100 words). Primary concept types: Medical Concept, Gene or Genome.",
+    "umls_concept_count": 6,
+    "hpo_concept_count": 0
+  },
+  {
+    "total_concepts": 21,
+    "unique_concepts": 13,
+    "concept_density": 4.779411764705882,
+    "priority_score": 0.5975882352941176,
+    "semantic_categories": {
+      "Gene or Genome": 7,
+      "Medical Concept": 6
+    },
+    "reasoning": "Low concept density. (4.8 concepts per 100 words). Primary concept types: Gene or Genome, Medical Concept.",
+    "umls_concept_count": 21,
+    "hpo_concept_count": 0
+  },
+  {
+    "total_concepts": 12,
+    "unique_concepts": 6,
+    "concept_density": 3.3707865168539324,
+    "priority_score": 0.4445585874799358,
+    "semantic_categories": {
+      "Gene or Genome": 1,
+      "Medical Concept": 5
+    },
+    "reasoning": "Low concept density. (3.4 concepts per 100 words). Primary concept types: Medical Concept, Gene or Genome.",
+    "umls_concept_count": 12,
+    "hpo_concept_count": 0
+  }
+]
