@@ -7,7 +7,7 @@ Centralized API routing for all UI backend endpoints.
 from fastapi import APIRouter
 
 from .dashboard import router as dashboard_router
-from ..auth import router as auth_router
+# from ..auth import router as auth_router  # disabled for minimal boot
 # The following routers are for modules that are not yet implemented.
 # from .knowledge_base import router as knowledge_base_router
 # from .database import router as database_router
@@ -20,7 +20,7 @@ from ..auth import router as auth_router
 api_router = APIRouter()
 
 # Include all sub-routers
-api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+# api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])  # disabled for now
 api_router.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
 # api_router.include_router(knowledge_base_router, prefix="/knowledge-base", tags=["Knowledge Base"])
 # api_router.include_router(database_router, prefix="/database", tags=["Database"])

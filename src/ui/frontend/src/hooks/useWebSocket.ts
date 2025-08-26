@@ -1,8 +1,8 @@
-import useWebSocket, { ReadyState } from 'use-websocket';
+import useWebSocketLib, { ReadyState } from 'react-use-websocket';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-const WEBSOCKET_URL = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000/ws';
+const WEBSOCKET_URL = process.env.REACT_APP_WS_URL || 'ws://127.0.0.1:8000/api/v1/ws';
 
 export const useWebSocketConnection = () => {
   const { token } = useAuth();
@@ -11,6 +11,8 @@ export const useWebSocketConnection = () => {
   useEffect(() => {
     if (token) {
       setSocketUrl(`${WEBSOCKET_URL}?token=${token}`);
+    } else {
+      setSocketUrl(WEBSOCKET_URL);
     }
   }, [token]);
 
@@ -18,8 +20,8 @@ export const useWebSocketConnection = () => {
     sendMessage,
     lastMessage,
     readyState,
-  } = useWebSocket(socketUrl, {
-    shouldReconnect: (closeEvent) => true,
+  } = useWebSocketLib(socketUrl ?? '', {
+    shouldReconnect: () => true,
     reconnectAttempts: 10,
     reconnectInterval: 3000,
   });
@@ -43,4 +45,10 @@ export const useWebSocketConnection = () => {
     connectionStatus,
     isConnected: readyState === ReadyState.OPEN,
   };
+};
+
+// Minimal adapter used by Layout
+export const useWebSocket = () => {
+  // In this minimal setup, expose empty notifications
+  return { notifications: [], unreadCount: 0 } as { notifications: any[]; unreadCount: number };
 };

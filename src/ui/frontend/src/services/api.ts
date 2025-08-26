@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // --- Axios Instance ---
 const apiClient = axios.create({
-  baseURL: '/api/v1',
+  baseURL: process.env.REACT_APP_API_BASE_URL || '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -13,7 +13,8 @@ apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers = config.headers || {};
+      (config.headers as any)['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },

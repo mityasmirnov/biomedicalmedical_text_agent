@@ -26,7 +26,7 @@ import {
   SmartToy as AgentsIcon,
   Description as DocumentsIcon,
   CheckCircle as ValidationIcon,
-  Monitoring as MonitoringIcon,
+  Insights as MonitoringIcon,
   School as KnowledgeBaseIcon,
   Notifications as NotificationsIcon,
   Settings as SettingsIcon,
@@ -37,7 +37,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 // Hooks
 import { useAuth } from '../../hooks/useAuth';
-import { useWebSocket } from '../../hooks/useWebSocket';
+import { useWebSocket } from '../../contexts/WebSocketContext';
 
 // Components
 import NotificationPanel from '../Notifications/NotificationPanel';

@@ -38,7 +38,7 @@ import {
 
 // Hooks
 import { useDashboardData } from '../../hooks/useDashboardData';
-import { useWebSocket } from '../../hooks/useWebSocket';
+import { useWebSocket } from '../../contexts/WebSocketContext';
 
 // Components
 import StatCard from '../../components/Dashboard/StatCard';
@@ -87,9 +87,10 @@ const Dashboard: React.FC = () => {
   ];
 
   if (error) {
+    const errText = (error as any)?.message || String(error);
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <Typography color="error">Error loading dashboard: {error.message}</Typography>
+        <Typography color="error">Error loading dashboard: {errText}</Typography>
       </Box>
     );
   }
@@ -170,7 +171,7 @@ const Dashboard: React.FC = () => {
       {/* System Status and Alerts */}
       <Grid container spacing={3} mb={3}>
         <Grid item xs={12} md={8}>
-          <SystemStatusCard status={systemStatus} />
+          <SystemStatusCard status={systemStatus || 'Unknown'} details={overview ? 'OK' : 'Loading'} health={(overview ? 'healthy' : 'warning') as 'healthy' | 'warning' | 'critical'} />
         </Grid>
         <Grid item xs={12} md={4}>
           <AlertsCard alerts={alerts || []} />

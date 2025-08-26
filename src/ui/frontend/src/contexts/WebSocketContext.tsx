@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useReducer, useCallback } from 'react';
-import useWebSocket, { ReadyState } from 'react-use-websocket';
+import useWebSocketLib, { ReadyState } from 'react-use-websocket';
 import { useAuth } from './AuthContext';
 
 // Types
@@ -176,7 +176,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     sendMessage: wsSendMessage,
     lastMessage,
     readyState,
-  } = useWebSocket(
+  } = useWebSocketLib(
     isAuthenticated ? getWebSocketUrl() : null,
     {
       onOpen: () => {

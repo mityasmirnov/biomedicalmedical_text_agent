@@ -7,7 +7,9 @@ interface SystemStatusCardProps {
   health: 'healthy' | 'warning' | 'critical';
 }
 
-const healthColor = {
+type ChipColor = 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
+
+const healthColor: Record<SystemStatusCardProps['health'], ChipColor> = {
   healthy: 'success',
   warning: 'warning',
   critical: 'error',
