@@ -41,12 +41,23 @@ type AuthAction =
   | { type: 'CLEAR_ERROR' }
   | { type: 'SET_LOADING'; payload: boolean };
 
-// Initial state
+// Mock admin user for automatic authentication
+const MOCK_ADMIN_USER: User = {
+  id: "admin-1",
+  email: "admin@biomedical-agent.com",
+  name: "System Administrator",
+  role: "admin",
+  permissions: ["read", "write", "admin", "delete"]
+};
+
+const MOCK_ADMIN_TOKEN = "mock-admin-token-12345";
+
+// Initial state - automatically authenticated as admin
 const initialState: AuthState = {
-  user: null,
-  token: localStorage.getItem('auth_token'),
-  isAuthenticated: false,
-  isLoading: true,
+  user: MOCK_ADMIN_USER,
+  token: MOCK_ADMIN_TOKEN,
+  isAuthenticated: true,
+  isLoading: false,
   error: null,
 };
 
@@ -83,9 +94,9 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
     case 'AUTH_LOGOUT':
       return {
         ...state,
-        user: null,
-        token: null,
-        isAuthenticated: false,
+        user: MOCK_ADMIN_USER, // Always return to admin state
+        token: MOCK_ADMIN_TOKEN,
+        isAuthenticated: true,
         isLoading: false,
         error: null,
       };
@@ -114,112 +125,56 @@ const AuthContext = createContext<AuthContextType>(initialState as AuthContextTy
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Initialize auth state on mount
+  // Initialize auth state on mount - automatically authenticate as admin
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = localStorage.getItem('auth_token');
-      
-      if (token) {
-        try {
-          dispatch({ type: 'AUTH_START' });
-          
-          // Verify token and get user info
-          const response = await authAPI.verifyToken(token);
-          
-          if (response.valid) {
-            dispatch({
-              type: 'AUTH_SUCCESS',
-              payload: {
-                user: response.user,
-                token: token,
-              },
-            });
-          } else {
-            // Token is invalid, remove it
-            localStorage.removeItem('auth_token');
-            dispatch({ type: 'AUTH_LOGOUT' });
-          }
-        } catch (error) {
-          console.error('Token verification failed:', error);
-          localStorage.removeItem('auth_token');
-          dispatch({ type: 'AUTH_LOGOUT' });
-        }
-      } else {
-        dispatch({ type: 'SET_LOADING', payload: false });
-      }
+      // Automatically authenticate as admin
+      dispatch({
+        type: 'AUTH_SUCCESS',
+        payload: {
+          user: MOCK_ADMIN_USER,
+          token: MOCK_ADMIN_TOKEN,
+        },
+      });
     };
 
     initializeAuth();
   }, []);
 
-  // Login function
+  // Login function - always succeeds with admin
   const login = async (email: string, password: string): Promise<void> => {
-    try {
-      dispatch({ type: 'AUTH_START' });
-      
-      const response = await authAPI.login({ email, password });
-      
-      // Store token
-      localStorage.setItem('auth_token', response.token);
-      
-      dispatch({
-        type: 'AUTH_SUCCESS',
-        payload: {
-          user: response.user,
-          token: response.token,
-        },
-      });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || error.message || 'Login failed';
-      dispatch({
-        type: 'AUTH_FAILURE',
-        payload: errorMessage,
-      });
-      throw error;
-    }
+    // Mock successful login
+    dispatch({
+      type: 'AUTH_SUCCESS',
+      payload: {
+        user: MOCK_ADMIN_USER,
+        token: MOCK_ADMIN_TOKEN,
+      },
+    });
   };
 
-  // Logout function
+  // Logout function - always returns to admin state
   const logout = async (): Promise<void> => {
-    try {
-      // Call logout API if token exists
-      if (state.token) {
-        await authAPI.logout();
-      }
-    } catch (error) {
-      console.error('Logout API call failed:', error);
-    } finally {
-      // Always clear local state
-      localStorage.removeItem('auth_token');
-      dispatch({ type: 'AUTH_LOGOUT' });
-    }
+    // Always return to admin state
+    dispatch({
+      type: 'AUTH_SUCCESS',
+      payload: {
+        user: MOCK_ADMIN_USER,
+        token: MOCK_ADMIN_TOKEN,
+      },
+    });
   };
 
-  // Register function
+  // Register function - always succeeds with admin
   const register = async (userData: RegisterData): Promise<void> => {
-    try {
-      dispatch({ type: 'AUTH_START' });
-      
-      const response = await authAPI.register(userData);
-      
-      // Store token
-      localStorage.setItem('auth_token', response.token);
-      
-      dispatch({
-        type: 'AUTH_SUCCESS',
-        payload: {
-          user: response.user,
-          token: response.token,
-        },
-      });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || error.message || 'Registration failed';
-      dispatch({
-        type: 'AUTH_FAILURE',
-        payload: errorMessage,
-      });
-      throw error;
-    }
+    // Mock successful registration
+    dispatch({
+      type: 'AUTH_SUCCESS',
+      payload: {
+        user: MOCK_ADMIN_USER,
+        token: MOCK_ADMIN_TOKEN,
+      },
+    });
   };
 
   // Clear error function
@@ -227,34 +182,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'CLEAR_ERROR' });
   };
 
-  // Refresh token function
+  // Refresh token function - always returns admin token
   const refreshToken = async (): Promise<void> => {
-    try {
-      if (!state.token) {
-        throw new Error('No token to refresh');
-      }
-
-      const response = await authAPI.refreshToken(state.token);
-      
-      // Store new token
-      localStorage.setItem('auth_token', response.token);
-      
-      dispatch({
-        type: 'AUTH_SUCCESS',
-        payload: {
-          user: response.user,
-          token: response.token,
-        },
-      });
-    } catch (error: any) {
-      console.error('Token refresh failed:', error);
-      
-      // If refresh fails, logout user
-      localStorage.removeItem('auth_token');
-      dispatch({ type: 'AUTH_LOGOUT' });
-      
-      throw error;
-    }
+    // Always return admin token
+    dispatch({
+      type: 'AUTH_SUCCESS',
+      payload: {
+        user: MOCK_ADMIN_USER,
+        token: MOCK_ADMIN_TOKEN,
+      },
+    });
   };
 
   // Context value

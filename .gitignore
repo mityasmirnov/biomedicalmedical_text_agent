@@ -224,6 +224,23 @@ ehthumbs.db
 Thumbs.db
 
 # =============================================================================
+# Langextract Integration Files
+# =============================================================================
+
+# Langextract output files
+notebooks/output/*.csv
+notebooks/output/*.html
+notebooks/output/*.json
+notebooks/output/*.jsonl
+notebooks/output/*.xlsx
+notebooks/output/*.pdf
+
+# Test outputs
+test_output/
+extraction_output/
+demo_output/
+
+# =============================================================================
 # Machine Learning and Data Files
 # =============================================================================
 
