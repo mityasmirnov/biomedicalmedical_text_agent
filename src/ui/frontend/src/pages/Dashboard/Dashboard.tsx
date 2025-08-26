@@ -9,6 +9,7 @@ import {
   Chip,
   IconButton,
   useTheme,
+  Button,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -18,6 +19,9 @@ import {
   Error as ErrorIcon,
   Refresh as RefreshIcon,
   Speed as SpeedIcon,
+  Add as AddIcon,
+  Upload as UploadIcon,
+  Assessment as AssessmentIcon,
 } from '@mui/icons-material';
 import {
   LineChart,
@@ -86,17 +90,63 @@ const Dashboard: React.FC = () => {
     { name: 'Other', value: 10, color: '#ff7300' },
   ];
 
+  // Handle button actions
+  const handleUploadDocuments = () => {
+    // Navigate to documents page or open upload dialog
+    window.location.href = '/documents';
+  };
+
+  const handleViewAgents = () => {
+    window.location.href = '/agents';
+  };
+
+  const handleViewValidation = () => {
+    window.location.href = '/validation';
+  };
+
+  const handleViewDatabase = () => {
+    window.location.href = '/database';
+  };
+
+  const handleViewKnowledgeBase = () => {
+    window.location.href = '/knowledge-base';
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Dashboard
+        </Typography>
+        <LinearProgress />
+        <Typography variant="body1" sx={{ mt: 2 }}>
+          Loading dashboard data...
+        </Typography>
+      </Box>
+    );
+  }
+
+  // Show error state
   if (error) {
     const errText = (error as any)?.message || String(error);
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <Typography color="error">Error loading dashboard: {errText}</Typography>
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom color="error">
+          Error Loading Dashboard
+        </Typography>
+        <Typography color="error" sx={{ mb: 2 }}>
+          {errText}
+        </Typography>
+        <Button variant="contained" onClick={refetch}>
+          Retry
+        </Button>
       </Box>
     );
   }
 
   return (
-    <Box>
+    <Box sx={{ p: 3 }}>
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" component="h1" fontWeight="bold">
@@ -114,12 +164,56 @@ const Dashboard: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Loading indicator */}
-      {isLoading && (
-        <Box mb={2}>
-          <LinearProgress />
-        </Box>
-      )}
+      {/* Quick Actions */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Quick Actions
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Button
+                fullWidth
+                variant="contained"
+                startIcon={<UploadIcon />}
+                onClick={handleUploadDocuments}
+              >
+                Upload Documents
+              </Button>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<AgentIcon />}
+                onClick={handleViewAgents}
+              >
+                View Agents
+              </Button>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<AssessmentIcon />}
+                onClick={handleViewValidation}
+              >
+                Validation
+              </Button>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<ValidatedIcon />}
+                onClick={handleViewDatabase}
+              >
+                Database
+              </Button>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
       {/* Main Stats Grid */}
       <Grid container spacing={3} mb={3}>
@@ -127,16 +221,16 @@ const Dashboard: React.FC = () => {
           <StatCard
             title="Total Documents"
             value={statistics?.total_documents || 0}
-            change={statistics?.documents_this_period || 0}
-            changeLabel="this month"
+            change={statistics?.processed_today || 0}
+            changeLabel="today"
             icon={<DocumentIcon />}
             color="primary"
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
-            title="Successful Extractions"
-            value={statistics?.successful_extractions || 0}
+            title="Success Rate"
+            value={`${statistics?.success_rate || 0}%`}
             change={statistics?.success_rate || 0}
             changeLabel="success rate"
             icon={<AgentIcon />}
@@ -146,24 +240,22 @@ const Dashboard: React.FC = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
-            title="Validated Results"
-            value={statistics?.validated_extractions || 0}
-            change={85}
-            changeLabel="accuracy"
+            title="Total Extractions"
+            value={statistics?.total_extractions || 0}
+            change={statistics?.validation_pending || 0}
+            changeLabel="pending validation"
             icon={<ValidatedIcon />}
             color="info"
-            isPercentage
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Avg Processing Time"
-            value={`${(statistics?.average_extraction_time || 0).toFixed(1)}s`}
-            change={-12}
-            changeLabel="improvement"
+            value={`${(statistics?.average_processing_time || 0).toFixed(1)}s`}
+            change={statistics?.active_agents || 0}
+            changeLabel="active agents"
             icon={<SpeedIcon />}
             color="warning"
-            isPercentage
           />
         </Grid>
       </Grid>
@@ -171,7 +263,11 @@ const Dashboard: React.FC = () => {
       {/* System Status and Alerts */}
       <Grid container spacing={3} mb={3}>
         <Grid item xs={12} md={8}>
-          <SystemStatusCard status={systemStatus || 'Unknown'} details={overview ? 'OK' : 'Loading'} health={(overview ? 'healthy' : 'warning') as 'healthy' | 'warning' | 'critical'} />
+          <SystemStatusCard 
+            status={systemStatus?.status || 'Unknown'} 
+            details={overview ? 'System operational' : 'Loading system status'} 
+            health={(overview ? 'healthy' : 'warning') as 'healthy' | 'warning' | 'critical'} 
+          />
         </Grid>
         <Grid item xs={12} md={4}>
           <AlertsCard alerts={alerts || []} />
@@ -205,7 +301,6 @@ const Dashboard: React.FC = () => {
                       stackId="1"
                       stroke={theme.palette.primary.main}
                       fill={theme.palette.primary.light}
-                      fillOpacity={0.6}
                       name="Total Extractions"
                     />
                     <Area
@@ -214,8 +309,7 @@ const Dashboard: React.FC = () => {
                       stackId="2"
                       stroke={theme.palette.success.main}
                       fill={theme.palette.success.light}
-                      fillOpacity={0.8}
-                      name="Successful"
+                      name="Successful Extractions"
                     />
                   </AreaChart>
                 </ResponsiveContainer>

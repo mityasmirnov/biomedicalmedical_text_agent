@@ -46,11 +46,11 @@ export const useDashboardData = () => {
   };
 
   return {
-    overview: overview?.data,
-    statistics: statistics?.data,
-    systemStatus: systemStatus?.data,
-    recentActivities: recentActivities?.data,
-    alerts: alerts?.data,
+    overview: overview, // Remove .data since backend returns data directly
+    statistics: statistics, // Remove .data since backend returns data directly
+    systemStatus: systemStatus, // Remove .data since backend returns data directly
+    recentActivities: recentActivities, // Remove .data since backend returns data directly
+    alerts: alerts, // Remove .data since backend returns data directly
     isLoading: 
       isOverviewLoading || 
       isStatisticsLoading || 
