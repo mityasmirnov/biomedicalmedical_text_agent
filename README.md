@@ -819,5 +819,4 @@ python -c "import psutil; print(f'CPU: {psutil.cpu_percent()}%')"  # System reso
 
 **🎉 The Biomedical Data Extraction Engine is now fully operational and ready for immediate use!**
 
-*No authentication required - all features accessible immediately.*
-
+*Developed by Dima Smirnov*
