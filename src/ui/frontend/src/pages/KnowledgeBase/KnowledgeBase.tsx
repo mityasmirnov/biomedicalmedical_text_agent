@@ -17,6 +17,9 @@ import {
   AccordionDetails,
   Paper,
   Divider,
+  Tabs,
+  Tab,
+  MenuItem,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -25,11 +28,15 @@ import {
   Psychology as PsychologyIcon,
   Biotech as BiotechIcon,
   Description as DescriptionIcon,
+  Storage as StorageIcon,
+  DataObject as DataObjectIcon,
 } from '@mui/icons-material';
+import MetadataBrowser from '../../components/MetadataBrowser/MetadataBrowser';
 
 const KnowledgeBase: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [activeTab, setActiveTab] = useState(0);
 
   const categories = [
     { id: 'all', label: 'All', icon: <DescriptionIcon />, count: 1250 },
@@ -72,6 +79,10 @@ const KnowledgeBase: React.FC = () => {
      item.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
@@ -84,140 +95,122 @@ const KnowledgeBase: React.FC = () => {
         </Typography>
       </Box>
 
-      {/* Search and Filters */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                placeholder="Search knowledge base..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {categories.map((category) => (
-                  <Chip
-                    key={category.id}
-                    label={`${category.label} (${category.count})`}
-                    icon={category.icon}
-                    onClick={() => setSelectedCategory(category.id)}
-                    color={selectedCategory === category.id ? 'primary' : 'default'}
-                    variant={selectedCategory === category.id ? 'filled' : 'outlined'}
-                  />
-                ))}
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={activeTab} onChange={handleTabChange} aria-label="knowledge base tabs">
+          <Tab 
+            icon={<StorageIcon />} 
+            label="Metadata Browser" 
+            iconPosition="start"
+          />
+          <Tab 
+            icon={<DataObjectIcon />} 
+            label="Knowledge Items" 
+            iconPosition="start"
+          />
+        </Tabs>
+      </Box>
 
-      {/* Knowledge Categories */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
-          <Typography variant="h6" gutterBottom>
-            Knowledge Items ({filteredItems.length})
-          </Typography>
-          
-          {filteredItems.map((item) => (
-            <Card key={item.id} sx={{ mb: 2 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Box>
-                    <Typography variant="h6" gutterBottom>
-                      {item.title}
-                    </Typography>
+      {/* Tab Content */}
+      {activeTab === 0 && (
+        <MetadataBrowser />
+      )}
+
+      {activeTab === 1 && (
+        <>
+          {/* Search and Filters */}
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    placeholder="Search knowledge base..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    InputProps={{
+                      startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Category"
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                  >
+                    {categories.map((category) => (
+                      <MenuItem key={category.id} value={category.id}>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          {category.icon}
+                          <Typography sx={{ ml: 1 }}>{category.label}</Typography>
+                          <Chip 
+                            label={category.count} 
+                            size="small" 
+                            sx={{ ml: 'auto' }}
+                          />
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    startIcon={<SearchIcon />}
+                  >
+                    Search
+                  </Button>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+
+          {/* Knowledge Items */}
+          <Grid container spacing={3}>
+            {filteredItems.map((item) => (
+              <Grid item xs={12} md={6} lg={4} key={item.id}>
+                <Card sx={{ height: '100%' }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      {item.category === 'phenotypes' && <PsychologyIcon color="primary" />}
+                      {item.category === 'genes' && <BiotechIcon color="secondary" />}
+                      {item.category === 'diseases' && <ScienceIcon color="success" />}
+                      <Typography variant="h6" sx={{ ml: 1 }}>
+                        {item.title}
+                      </Typography>
+                    </Box>
+                    
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                       {item.description}
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Chip 
                         label={item.category} 
                         size="small" 
-                        color="primary" 
-                        variant="outlined" 
+                        variant="outlined"
                       />
                       <Typography variant="caption" color="text.secondary">
-                        {item.count} entries • Updated {item.lastUpdated}
+                        {item.lastUpdated}
                       </Typography>
                     </Box>
-                  </Box>
-                  <Button variant="outlined" size="small">
-                    Explore
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
-          ))}
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Typography variant="h6" gutterBottom>
-            Quick Actions
-          </Typography>
-          
-          <Card sx={{ mb: 2 }}>
-            <CardContent>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<ScienceIcon />}
-                sx={{ mb: 2 }}
-              >
-                Add New Knowledge Item
-              </Button>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<BiotechIcon />}
-                sx={{ mb: 2 }}
-              >
-                Import Ontology
-              </Button>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<DescriptionIcon />}
-              >
-                Export Knowledge Base
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Statistics
-              </Typography>
-              <List dense>
-                <ListItem>
-                  <ListItemText 
-                    primary="Total Items" 
-                    secondary="1,250" 
-                  />
-                </ListItem>
-                <ListItem>
-                  <ListItemText 
-                    primary="Categories" 
-                    secondary="4" 
-                  />
-                </ListItem>
-                <ListItem>
-                  <ListItemText 
-                    primary="Last Updated" 
-                    secondary="Today" 
-                  />
-                </ListItem>
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+                    
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Items: {item.count}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </>
+      )}
     </Box>
   );
 };

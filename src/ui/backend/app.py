@@ -91,6 +91,17 @@ def create_app(config: Optional[object] = None) -> FastAPI:
     async def health() -> JSONResponse:
         return JSONResponse({"status": "ok"})
 
+    # WebSocket endpoint
+    @app.websocket("/api/v1/ws")
+    async def websocket_endpoint(websocket: WebSocket) -> None:
+        await manager.connect(websocket)
+        try:
+            while True:
+                _ = await websocket.receive_text()
+                await manager.broadcast("pong")
+        except WebSocketDisconnect:
+            manager.disconnect(websocket)
+
     # Serve static frontend (React build) if present
     frontend_build_path = Path(__file__).parent.parent / "frontend" / "build"
     if frontend_build_path.exists():
@@ -101,12 +112,12 @@ def create_app(config: Optional[object] = None) -> FastAPI:
             index_file = frontend_build_path / "index.html"
             return HTMLResponse(content=index_file.read_text(encoding="utf-8"), status_code=200)
 
-        # SPA fallback for frontend routes, but exclude API routes
+        # SPA fallback for frontend routes - only catch non-API routes
         @app.get("/{full_path:path}")
         async def spa_fallback(full_path: str) -> HTMLResponse:
-            # Don't serve frontend for API routes
-            if full_path.startswith("api/"):
-                raise HTTPException(status_code=404, detail="API endpoint not found")
+            # Don't serve frontend for API routes or static files
+            if full_path.startswith(("api/", "static/")):
+                raise HTTPException(status_code=404, detail="Not found")
             
             index_file = frontend_build_path / "index.html"
             return HTMLResponse(content=index_file.read_text(encoding="utf-8"), status_code=200)
@@ -123,16 +134,6 @@ def create_app(config: Optional[object] = None) -> FastAPI:
     @app.get("/favicon.ico")
     async def favicon() -> Response:
         return Response(status_code=204)
-
-    @app.websocket("/api/v1/ws")
-    async def websocket_endpoint(websocket: WebSocket) -> None:
-        await manager.connect(websocket)
-        try:
-            while True:
-                _ = await websocket.receive_text()
-                await manager.broadcast("pong")
-        except WebSocketDisconnect:
-            manager.disconnect(websocket)
 
     return app
 

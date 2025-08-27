@@ -65,4 +65,29 @@ export const dashboardAPI = {
   getAlerts: () => apiClient.get('/dashboard/alerts'),
 };
 
+// Agents API
+export const agentsAPI = {
+  getAgents: () => apiClient.get('/agents/'),
+  getAgent: (id: string) => apiClient.get(`/agents/${id}/`),
+  startAgent: (id: string) => apiClient.post(`/agents/${id}/start/`),
+  stopAgent: (id: string) => apiClient.post(`/agents/${id}/stop/`),
+};
+
+// Documents API
+export const documentsAPI = {
+  getDocuments: () => apiClient.get('/documents/'),
+  getDocument: (id: string) => apiClient.get(`/documents/${id}/`),
+  getDocumentFullText: (id: string) => apiClient.get(`/documents/${id}/full-text/`),
+};
+
+// Metadata API
+export const metadataAPI = {
+  getMetadataOverview: () => apiClient.get('/metadata/'),
+  getCollection: (name: string) => apiClient.get(`/metadata/collections/${name}/`),
+  getCollectionDocuments: (name: string, limit = 100, offset = 0) => 
+    apiClient.get(`/metadata/collections/${name}/documents/?limit=${limit}&offset=${offset}`),
+  searchMetadata: (query: string, collection?: string, limit = 100) => 
+    apiClient.get(`/metadata/search/?query=${query}&collection=${collection || ''}&limit=${limit}`),
+};
+
 export default apiClient;
