@@ -64,7 +64,7 @@ def get_config():
         def __init__(self):
             self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
             self.openrouter_api_base = "https://openrouter.ai/api/v1"
-            self.default_model = "google/gemma-2-27b-it:free"
+            self.default_model = "gpt-3.5-turbo"
             self.temperature = 0.1
             self.max_tokens = 2048
             self.timeout = 60
@@ -112,16 +112,15 @@ class OpenRouterClient(BaseLLMClient):
         self.daily_limit = app_config.llm.max_requests_per_day
         self.monthly_limit = app_config.llm.max_requests_per_month
         
-        log.info(f"Initialized OpenRouter client for model: {self.model_name}")
-    
-    def _setup(self) -> None:
-        """Setup the OpenRouter client."""
+        # Setup headers
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
             "HTTP-Referer": "https://biomedical-extraction-engine.com",
             "X-Title": "Biomedical Data Extraction Engine"
         }
+        
+        log.info(f"Initialized OpenRouter client for model: {self.model_name}")
     
     async def _check_usage_limits(self) -> bool:
         """Check if usage limits allow the request to proceed."""
@@ -207,9 +206,20 @@ class OpenRouterClient(BaseLLMClient):
                 "model": self.model_name,
                 "messages": messages,
                 "temperature": temperature or self.default_temperature,
-                "max_tokens": max_tokens or self.default_max_tokens,
-                **kwargs
+                "max_tokens": max_tokens or self.default_max_tokens
             }
+            
+            # Add optional parameters if provided
+            if stop_sequences:
+                payload["stop"] = stop_sequences
+            if top_p is not None:
+                payload["top_p"] = top_p
+            if frequency_penalty is not None:
+                payload["frequency_penalty"] = frequency_penalty
+            if presence_penalty is not None:
+                payload["presence_penalty"] = presence_penalty
+            if stream:
+                payload["stream"] = stream
             
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
@@ -254,14 +264,14 @@ class OpenRouterClient(BaseLLMClient):
             return ProcessingResult(
                 success=True,
                 data=generated_text,
-                processing_time=processing_time,
                 metadata={
                     "model": self.model_name,
                     "usage": usage,
                     "prompt_tokens": prompt_tokens,
                     "completion_tokens": completion_tokens,
                     "total_tokens": total_tokens,
-                    "estimated_cost": estimated_cost
+                    "estimated_cost": estimated_cost,
+                    "processing_time": processing_time
                 }
             )
             

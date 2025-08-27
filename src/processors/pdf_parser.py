@@ -14,7 +14,7 @@ import fitz  # PyMuPDF
 
 log = logging.getLogger(__name__)
 
-# Simple document class to avoid circular imports
+# Simple classes to avoid circular imports
 class Document:
     """Simple document class for PDF parsing."""
     def __init__(self, title: str, content: str, format: str, source_path: str, metadata: Dict[str, Any]):
@@ -24,6 +24,14 @@ class Document:
         self.source_path = source_path
         self.metadata = metadata
 
+class ProcessingResult:
+    """Simple processing result class for PDF parsing."""
+    def __init__(self, success: bool, data: Any = None, error: str = None, metadata: Dict[str, Any] = None):
+        self.success = success
+        self.data = data
+        self.error = error
+        self.metadata = metadata or {}
+
 class PDFParser:
     """PDF parser that extracts text and metadata from PDF documents."""
     
@@ -32,7 +40,7 @@ class PDFParser:
         self.enable_table_extraction = kwargs.get("enable_table_extraction", False)
         self.preserve_formatting = kwargs.get("preserve_formatting", True)
     
-    def process(self, input_data: str) -> Document:
+    def process(self, input_data: str) -> ProcessingResult:
         """
         Process a PDF file and extract text content.
         
@@ -40,12 +48,15 @@ class PDFParser:
             input_data: Path to the PDF file
             
         Returns:
-            Document containing the extracted content
+            ProcessingResult containing the Document or error
         """
         try:
             pdf_path = Path(input_data)
             if not pdf_path.exists():
-                raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+                return ProcessingResult(
+                    success=False,
+                    error=f"PDF file not found: {pdf_path}"
+                )
             
             log.info(f"Processing PDF: {pdf_path}")
             
@@ -67,11 +78,17 @@ class PDFParser:
             
             log.info(f"Successfully processed PDF: {pdf_path} ({len(cleaned_text)} characters)")
             
-            return document
+            return ProcessingResult(
+                success=True,
+                data=document
+            )
             
         except Exception as e:
             log.error(f"Error processing PDF {input_data}: {str(e)}")
-            raise
+            return ProcessingResult(
+                success=False,
+                error=str(e)
+            )
     
     def _extract_text(self, pdf_path: Path) -> str:
         """Extract text from PDF using PyMuPDF."""
