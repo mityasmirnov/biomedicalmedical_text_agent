@@ -1,29 +1,31 @@
 """
-LangExtract Engine
+LangExtract Engine for Biomedical Information Extraction
 
-Main engine for running LangExtract on biomedical texts with OpenRouter API support
-and integration with existing biomedical text agent components.
+This module integrates Google's LangExtract with OpenRouter API for structured
+extraction from medical literature with precise source grounding.
 """
 
 import os
-import json
 import logging
+import json
 import asyncio
 from typing import Dict, List, Any, Optional, Union
 from pathlib import Path
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# Try to import LangExtract
 try:
     import langextract as lx
 except ImportError:
-    print("LangExtract not installed. Install with: pip install langextract")
     lx = None
 
 from openai import OpenAI
 
 from .schema_classes import BiomedicExtractionClasses, BIOMEDICAL_SYSTEM_PROMPT
 from .normalizer import BiomedicNormalizer
-from core.config import Config
+# Remove circular import
+# from core.config import Config
 from processors.patient_segmenter import PatientSegmenter
 
 
@@ -40,7 +42,7 @@ class LangExtractEngine:
     
     def __init__(
         self,
-        config: Optional[Config] = None,
+        config: Optional[Any] = None,
         model_id: str = "google/gemma-2-27b-it:free",
         openrouter_api_key: Optional[str] = None,
         use_local_model: bool = False,
@@ -50,7 +52,7 @@ class LangExtractEngine:
         Initialize LangExtract engine.
         
         Args:
-            config: System configuration
+            config: System configuration (optional to avoid circular imports)
             model_id: Model ID for OpenRouter or local model
             openrouter_api_key: OpenRouter API key
             use_local_model: Whether to use local model (Ollama)
@@ -59,7 +61,7 @@ class LangExtractEngine:
         if lx is None:
             raise ImportError("LangExtract is required. Install with: pip install langextract")
         
-        self.config = config or Config()
+        self.config = config
         self.model_id = model_id
         self.use_local_model = use_local_model
         self.local_model_url = local_model_url
@@ -68,7 +70,7 @@ class LangExtractEngine:
         self.openrouter_api_key = (
             openrouter_api_key or 
             os.getenv("OPENROUTER_API_KEY") or
-            self.config.llm.openrouter_api_key
+            (self.config.llm.openrouter_api_key if self.config and hasattr(self.config, 'llm') else None)
         )
         
         # Initialize extraction classes

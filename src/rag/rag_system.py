@@ -2,14 +2,26 @@
 Retrieval-Augmented Generation (RAG) system for biomedical data.
 """
 
+import logging
 from typing import List, Dict, Any, Optional
-from core.base import ProcessingResult
-from core.logging_config import get_logger
+
+# Remove circular imports
+# from core.base import ProcessingResult
+# from core.logging_config import get_logger
 from database.vector_manager import VectorManager
 from database.sqlite_manager import SQLiteManager
 from core.llm_client.openrouter_client import OpenRouterClient
 
-log = get_logger(__name__)
+log = logging.getLogger(__name__)
+
+# Simple classes to avoid circular imports
+class ProcessingResult:
+    """Simple processing result class for RAG operations."""
+    def __init__(self, success: bool, data: Any = None, error: str = None, metadata: Dict[str, Any] = None):
+        self.success = success
+        self.data = data
+        self.error = error
+        self.metadata = metadata or {}
 
 class RAGSystem:
     """RAG system for answering questions about biomedical data."""
@@ -50,7 +62,7 @@ Format your responses clearly with:
     async def answer_question(self, 
                             question: str, 
                             max_context_docs: int = 5,
-                            include_patient_records: bool = True) -> ProcessingResult[Dict[str, Any]]:
+                            include_patient_records: bool = True) -> ProcessingResult:
         """
         Answer a question using RAG approach.
         
@@ -122,7 +134,7 @@ Format your responses clearly with:
                 error=f"RAG processing failed: {str(e)}"
             )
     
-    async def _retrieve_context(self, question: str, max_docs: int) -> ProcessingResult[List[Dict[str, Any]]]:
+    async def _retrieve_context(self, question: str, max_docs: int) -> ProcessingResult:
         """Retrieve relevant documents using vector similarity."""
         try:
             # Search vector database
@@ -142,7 +154,7 @@ Format your responses clearly with:
                 error=f"Context retrieval failed: {str(e)}"
             )
     
-    async def _retrieve_patient_context(self, question: str) -> ProcessingResult[List[Dict[str, Any]]]:
+    async def _retrieve_patient_context(self, question: str) -> ProcessingResult:
         """Retrieve relevant patient records based on question keywords."""
         try:
             # Extract potential keywords for patient record search
@@ -242,7 +254,7 @@ Format your responses clearly with:
         
         return '\n'.join(context_parts)
     
-    async def _generate_answer(self, question: str, context: str) -> ProcessingResult[str]:
+    async def _generate_answer(self, question: str, context: str) -> ProcessingResult:
         """Generate answer using LLM."""
         try:
             prompt = f"""Based on the following context from biomedical literature and patient records, please answer the question.
@@ -299,7 +311,7 @@ Please provide a comprehensive answer based on the context provided. If the cont
         
         return sources
     
-    async def get_summary_statistics(self) -> ProcessingResult[Dict[str, Any]]:
+    async def get_summary_statistics(self) -> ProcessingResult:
         """Get summary statistics about the RAG system."""
         try:
             # Get vector database stats
@@ -332,7 +344,7 @@ Please provide a comprehensive answer based on the context provided. If the cont
                 error=f"Failed to get RAG statistics: {str(e)}"
             )
     
-    async def add_documents_to_index(self, documents: List) -> ProcessingResult[int]:
+    async def add_documents_to_index(self, documents: List) -> ProcessingResult:
         """Add documents to the vector index."""
         try:
             # Add to vector database

@@ -3,12 +3,15 @@ Patient segmentation module for identifying and separating patient cases in docu
 """
 
 import re
-from typing import Dict, List, Tuple, Optional
+import logging
+from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
-from core.base import BaseProcessor, Document, ProcessingResult
-from core.logging_config import get_logger
 
-log = get_logger(__name__)
+# Remove circular imports
+# from core.base import BaseProcessor, Document, ProcessingResult
+# from core.logging_config import get_logger
+
+log = logging.getLogger(__name__)
 
 @dataclass
 class PatientSegment:
@@ -24,13 +27,13 @@ class PatientSegment:
         if self.metadata is None:
             self.metadata = {}
 
-class PatientSegmenter(BaseProcessor[Document, List[PatientSegment]]):
+class PatientSegmenter:
     """Segments documents into individual patient cases."""
     
     def __init__(self, **kwargs):
-        super().__init__(name="patient_segmenter", **kwargs)
-        self.min_segment_length = self.get_config("min_segment_length", 100)
-        self.max_patients = self.get_config("max_patients", 20)
+        self.name = "patient_segmenter"
+        self.min_segment_length = kwargs.get("min_segment_length", 100)
+        self.max_patients = kwargs.get("max_patients", 20)
         self._compile_patterns()
     
     def _compile_patterns(self):
@@ -56,18 +59,18 @@ class PatientSegmenter(BaseProcessor[Document, List[PatientSegment]]):
             re.compile(r'\bpresented?\s+(?:with|at)', re.IGNORECASE),
         ]
     
-    def process(self, input_data: Document) -> ProcessingResult[List[PatientSegment]]:
+    def process(self, input_data: Any) -> List[PatientSegment]:
         """
         Segment document into patient cases.
         
         Args:
-            input_data: Document to segment
+            input_data: Document to segment (can be any object with .content attribute)
             
         Returns:
-            ProcessingResult containing list of PatientSegments
+            List of PatientSegments
         """
         try:
-            log.info(f"Segmenting document: {input_data.title}")
+            log.info(f"Segmenting document: {getattr(input_data, 'title', 'Unknown')}")
             
             # Try different segmentation strategies
             segments = []
@@ -110,26 +113,16 @@ class PatientSegmenter(BaseProcessor[Document, List[PatientSegment]]):
             # Add document metadata to segments
             for segment in valid_segments:
                 segment.metadata.update({
-                    "source_document_id": input_data.id,
-                    "source_title": input_data.title,
-                    "document_format": input_data.format.value
+                    "source_document_id": getattr(input_data, "id", "unknown"),
+                    "source_title": getattr(input_data, "title", "Unknown Document"),
+                    "document_format": getattr(input_data, "format", "unknown").value if hasattr(input_data, "format") else "unknown"
                 })
             
-            return ProcessingResult(
-                success=True,
-                data=valid_segments,
-                metadata={
-                    "total_segments": len(valid_segments),
-                    "segmentation_method": valid_segments[0].metadata.get("method") if valid_segments else "none"
-                }
-            )
+            return valid_segments
             
         except Exception as e:
             log.error(f"Error segmenting document: {str(e)}")
-            return ProcessingResult(
-                success=False,
-                error=f"Segmentation failed: {str(e)}"
-            )
+            return []
     
     def _segment_by_explicit_markers(self, text: str) -> List[PatientSegment]:
         """Segment text using explicit patient markers."""

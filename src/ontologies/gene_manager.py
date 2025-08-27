@@ -4,12 +4,15 @@ Gene normalization manager using HGNC standards.
 
 import json
 import re
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Set
-from core.base import ProcessingResult
-from core.logging_config import get_logger
 
-log = get_logger(__name__)
+# Remove circular imports
+# from core.base import ProcessingResult
+# from core.logging_config import get_logger
+
+log = logging.getLogger(__name__)
 
 class GeneManager:
     """Manages gene symbol normalization using HGNC standards."""
@@ -246,7 +249,7 @@ class GeneManager:
         except Exception as e:
             log.error(f"Error saving gene data: {str(e)}")
     
-    def normalize_gene_symbol(self, gene_symbol: str) -> ProcessingResult[Dict[str, any]]:
+    def normalize_gene_symbol(self, gene_symbol: str) -> Dict[str, any]:
         """
         Normalize a gene symbol to official HGNC symbol.
         
@@ -258,10 +261,11 @@ class GeneManager:
         """
         try:
             if not gene_symbol or not gene_symbol.strip():
-                return ProcessingResult(
-                    success=True,
-                    data={"original_symbol": gene_symbol, "normalized_symbol": None, "match_type": None}
-                )
+                return {
+                    "original_symbol": gene_symbol,
+                    "normalized_symbol": None,
+                    "match_type": None
+                }
             
             symbol = gene_symbol.strip()
             original_symbol = symbol
@@ -315,11 +319,7 @@ class GeneManager:
                         "gene_info": None
                     }
                     
-                    return ProcessingResult(
-                        success=True,
-                        data=result,
-                        warnings=[f"No match found for gene symbol: {original_symbol}"]
-                    )
+                    return result
             
             # Get gene information
             gene_info = self.genes.get(normalized, {})
@@ -332,17 +332,17 @@ class GeneManager:
                 "gene_info": gene_info
             }
             
-            return ProcessingResult(
-                success=True,
-                data=result
-            )
+            return result
             
         except Exception as e:
             log.error(f"Error normalizing gene symbol '{gene_symbol}': {str(e)}")
-            return ProcessingResult(
-                success=False,
-                error=f"Gene normalization failed: {str(e)}"
-            )
+            return {
+                "original_symbol": gene_symbol,
+                "normalized_symbol": None,
+                "match_type": None,
+                "confidence": 0.0,
+                "gene_info": None
+            }
     
     def _fuzzy_match_gene(self, symbol: str) -> Optional[Dict[str, any]]:
         """Perform fuzzy matching for gene symbols."""
@@ -403,58 +403,56 @@ class GeneManager:
         
         return similarity
     
-    def get_gene_info(self, gene_symbol: str) -> ProcessingResult[Dict[str, any]]:
+    def get_gene_info(self, gene_symbol: str) -> Dict[str, any]:
         """Get detailed information about a gene."""
         try:
             if gene_symbol not in self.genes:
-                return ProcessingResult(
-                    success=False,
-                    error=f"Gene {gene_symbol} not found"
-                )
+                return {
+                    "original_symbol": gene_symbol,
+                    "normalized_symbol": None,
+                    "error": f"Gene {gene_symbol} not found"
+                }
             
             gene_info = self.genes[gene_symbol].copy()
-            return ProcessingResult(
-                success=True,
-                data=gene_info
-            )
+            return {
+                "original_symbol": gene_symbol,
+                "normalized_symbol": gene_symbol, # Assuming no normalization for this specific call
+                "match_type": "exact_symbol",
+                "confidence": 1.0,
+                "gene_info": gene_info
+            }
             
         except Exception as e:
             log.error(f"Error getting gene info: {str(e)}")
-            return ProcessingResult(
-                success=False,
-                error=f"Failed to get gene info: {str(e)}"
-            )
+            return {
+                "original_symbol": gene_symbol,
+                "normalized_symbol": None,
+                "error": f"Failed to get gene info: {str(e)}"
+            }
     
-    def batch_normalize_genes(self, gene_list: List[str]) -> ProcessingResult[List[Dict[str, any]]]:
+    def batch_normalize_genes(self, gene_list: List[str]) -> List[Dict[str, any]]:
         """Normalize multiple gene symbols at once."""
         try:
             results = []
             
             for gene_symbol in gene_list:
                 result = self.normalize_gene_symbol(gene_symbol)
-                if result.success:
-                    results.append(result.data)
+                if result["normalized_symbol"] is not None:
+                    results.append(result)
                 else:
                     results.append({
                         "original_symbol": gene_symbol,
                         "normalized_symbol": None,
-                        "error": result.error
+                        "error": result["error"]
                     })
             
-            return ProcessingResult(
-                success=True,
-                data=results,
-                metadata={"total_processed": len(gene_list)}
-            )
+            return results
             
         except Exception as e:
             log.error(f"Error in batch gene normalization: {str(e)}")
-            return ProcessingResult(
-                success=False,
-                error=f"Batch normalization failed: {str(e)}"
-            )
+            return [{"original_symbol": gene_symbol, "normalized_symbol": None, "error": f"Batch normalization failed: {str(e)}"} for gene_symbol in gene_list]
     
-    def search_genes(self, query: str, limit: int = 10) -> ProcessingResult[List[Dict[str, any]]]:
+    def search_genes(self, query: str, limit: int = 10) -> List[Dict[str, any]]:
         """Search genes by query."""
         try:
             query_upper = query.upper()
@@ -497,20 +495,13 @@ class GeneManager:
             matches.sort(key=lambda x: x["confidence"], reverse=True)
             matches = matches[:limit]
             
-            return ProcessingResult(
-                success=True,
-                data=matches,
-                metadata={"query": query, "total_found": len(matches)}
-            )
+            return matches
             
         except Exception as e:
             log.error(f"Error searching genes: {str(e)}")
-            return ProcessingResult(
-                success=False,
-                error=f"Gene search failed: {str(e)}"
-            )
+            return []
     
-    def get_statistics(self) -> ProcessingResult[Dict[str, any]]:
+    def get_statistics(self) -> Dict[str, any]:
         """Get gene manager statistics."""
         try:
             stats = {
@@ -521,15 +512,16 @@ class GeneManager:
                 "data_path": str(self.gene_data_path)
             }
             
-            return ProcessingResult(
-                success=True,
-                data=stats
-            )
+            return stats
             
         except Exception as e:
             log.error(f"Error getting gene statistics: {str(e)}")
-            return ProcessingResult(
-                success=False,
-                error=f"Failed to get statistics: {str(e)}"
-            )
+            return {
+                "total_genes": 0,
+                "total_symbol_mappings": 0,
+                "total_alias_mappings": 0,
+                "total_previous_symbol_mappings": 0,
+                "data_path": str(self.gene_data_path),
+                "error": f"Failed to get statistics: {str(e)}"
+            }
 

@@ -18,7 +18,8 @@ from metadata_triage.metadata_orchestrator import MetadataOrchestrator
 from langextract_integration.extractor import LangExtractEngine
 from database.sqlite_manager import SQLiteManager
 from database.vector_manager import VectorManager
-from rag.rag_system import RAGSystem
+# Remove circular import
+# from rag.rag_system import RAGSystem
 from core.llm_client.openrouter_client import OpenRouterClient
 from core.config import Config
 
@@ -72,12 +73,17 @@ class UnifiedOrchestrator:
             self.vector_manager = VectorManager()
             logger.info("Database managers initialized")
             
-            # Initialize RAG system
-            self.rag_system = RAGSystem(
-                vector_manager=self.vector_manager,
-                sqlite_manager=self.sqlite_manager
-            )
-            logger.info("RAG system initialized")
+            # Initialize RAG system (optional to avoid circular imports)
+            try:
+                from rag.rag_system import RAGSystem
+                self.rag_system = RAGSystem(
+                    vector_manager=self.vector_manager,
+                    sqlite_manager=self.sqlite_manager
+                )
+                logger.info("RAG system initialized")
+            except ImportError as e:
+                logger.warning(f"RAG system not available: {e}")
+                self.rag_system = None
             
         except Exception as e:
             logger.error(f"Failed to initialize components: {e}")

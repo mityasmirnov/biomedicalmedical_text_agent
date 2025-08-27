@@ -4,13 +4,31 @@ SQLite database manager for storing extracted patient records.
 
 import sqlite3
 import json
+import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
-from core.base import PatientRecord, ProcessingResult
-from core.logging_config import get_logger
 
-log = get_logger(__name__)
+# Remove circular imports
+# from core.base import PatientRecord, ProcessingResult
+# from core.logging_config import get_logger
+
+log = logging.getLogger(__name__)
+
+# Simple classes to avoid circular imports
+class PatientRecord:
+    """Simple patient record class for database operations."""
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+class ProcessingResult:
+    """Simple processing result class for database operations."""
+    def __init__(self, success: bool, data: Any = None, error: str = None, metadata: Dict[str, Any] = None):
+        self.success = success
+        self.data = data
+        self.error = error
+        self.metadata = metadata or {}
 
 class SQLiteManager:
     """Manages SQLite database operations for patient records."""
@@ -120,69 +138,198 @@ class SQLiteManager:
                     )
                 """)
                 
+                # Create extractions table (from UI backend)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS extractions (
+                        id TEXT PRIMARY KEY,
+                        document_id TEXT NOT NULL,
+                        agent_type TEXT NOT NULL,
+                        extracted_data TEXT DEFAULT '{}',
+                        status TEXT DEFAULT 'pending',
+                        confidence_score REAL DEFAULT 0.0,
+                        processing_time_seconds REAL DEFAULT 0.0,
+                        validation_status TEXT DEFAULT 'pending',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (document_id) REFERENCES documents (id)
+                    )
+                """)
+                
+                # Create system_activities table (from UI backend)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS system_activities (
+                        id TEXT PRIMARY KEY,
+                        activity_type TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        user_id TEXT,
+                        metadata TEXT DEFAULT '{}',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                
+                # Create system_alerts table (from UI backend)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS system_alerts (
+                        id TEXT PRIMARY KEY,
+                        alert_type TEXT NOT NULL,
+                        severity TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        message TEXT NOT NULL,
+                        status TEXT DEFAULT 'active',
+                        dismissed_at TIMESTAMP,
+                        dismissed_by TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                
+                # Create api_requests table (from UI backend)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS api_requests (
+                        id TEXT PRIMARY KEY,
+                        endpoint TEXT NOT NULL,
+                        method TEXT NOT NULL,
+                        user_id TEXT,
+                        response_status INTEGER,
+                        response_time_ms REAL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                
+                # Create users table (from UI backend)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS users (
+                        id TEXT PRIMARY KEY,
+                        email TEXT UNIQUE NOT NULL,
+                        name TEXT NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        role TEXT DEFAULT 'user',
+                        permissions TEXT DEFAULT '[]',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                
+                # Create default admin user (from UI backend)
+                cursor.execute("""
+                    INSERT OR IGNORE INTO users (id, email, name, password_hash, role, permissions)
+                    VALUES ('admin', 'admin@example.com', 'Administrator', 
+                            '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6QBjDKJhOu', 
+                            'admin', '["read", "write", "admin"]')
+                """)
+                
                 # Create indexes for better performance
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_patient_records_pmid ON patient_records (pmid)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_patient_records_gene ON patient_records (gene)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_patient_records_phenotypes ON patient_records (phenotypes)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_documents_pmid ON documents (pmid)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_extractions_document_id ON extractions (document_id)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_extractions_agent_type ON extractions (agent_type)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_system_activities_type ON system_activities (activity_type)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_system_alerts_status ON system_alerts (status)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_api_requests_endpoint ON api_requests (endpoint)")
                 
                 conn.commit()
-                log.info(f"Database initialized at {self.db_path}")
+                log.info("Database initialized successfully")
                 
         except Exception as e:
-            log.error(f"Error initializing database: {str(e)}")
+            log.error(f"Failed to initialize database: {e}")
             raise
     
-    def store_document(self, document) -> ProcessingResult[str]:
+    def store_document(self, document_data: Dict[str, Any]) -> ProcessingResult:
         """Store a document in the database."""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Extract PMID from metadata or filename
-                pmid = None
-                if hasattr(document, 'metadata') and document.metadata:
-                    pmid = document.metadata.get('pmid')
-                
-                if not pmid and hasattr(document, 'source_path'):
-                    filename = Path(document.source_path).stem
-                    if filename.startswith("PMID"):
-                        try:
-                            pmid = int(filename[4:])
-                        except ValueError:
-                            pass
-                
                 cursor.execute("""
-                    INSERT OR REPLACE INTO documents 
-                    (id, title, source_path, pmid, content, metadata, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO documents (
+                        id, title, source_path, pmid, doi, authors, journal, 
+                        publication_date, abstract, content, metadata
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    document.id,
-                    getattr(document, 'title', ''),
-                    getattr(document, 'source_path', ''),
-                    pmid,
-                    getattr(document, 'content', ''),
-                    json.dumps(getattr(document, 'metadata', {})),
-                    datetime.now().isoformat()
+                    document_data.get("id"),
+                    document_data.get("title"),
+                    document_data.get("source_path"),
+                    document_data.get("pmid"),
+                    document_data.get("doi"),
+                    document_data.get("authors"),
+                    document_data.get("journal"),
+                    document_data.get("publication_date"),
+                    document_data.get("abstract"),
+                    document_data.get("content"),
+                    document_data.get("metadata")
                 ))
                 
                 conn.commit()
-                log.info(f"Stored document {document.id} in database")
                 
                 return ProcessingResult(
                     success=True,
-                    data=document.id,
-                    metadata={"pmid": pmid}
+                    data={"document_id": document_data.get("id")},
+                    metadata={"stored_at": datetime.now().isoformat()}
                 )
                 
         except Exception as e:
-            log.error(f"Error storing document: {str(e)}")
+            log.error(f"Failed to store document: {e}")
             return ProcessingResult(
                 success=False,
-                error=f"Failed to store document: {str(e)}"
+                error=str(e)
             )
     
-    def store_patient_records(self, records: List[PatientRecord]) -> ProcessingResult[List[str]]:
+    def get_documents(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+        """Get documents from the database with pagination."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    SELECT id, title, source_path, pmid, doi, authors, journal, 
+                           publication_date, abstract, content, metadata, created_at
+                    FROM documents
+                    ORDER BY created_at DESC
+                    LIMIT ? OFFSET ?
+                """, (limit, offset))
+                
+                columns = [description[0] for description in cursor.description]
+                documents = []
+                
+                for row in cursor.fetchall():
+                    doc = dict(zip(columns, row))
+                    documents.append(doc)
+                
+                return documents
+                
+        except Exception as e:
+            log.error(f"Failed to get documents: {e}")
+            return []
+    
+    def get_documents_by_pmid(self, pmid: int) -> List[Dict[str, Any]]:
+        """Get documents by PMID."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    SELECT id, title, source_path, pmid, doi, authors, journal, 
+                           publication_date, abstract, content, metadata, created_at
+                    FROM documents
+                    WHERE pmid = ?
+                    ORDER BY created_at DESC
+                """, (pmid,))
+                
+                columns = [description[0] for description in cursor.description]
+                documents = []
+                
+                for row in cursor.fetchall():
+                    doc = dict(zip(columns, row))
+                    documents.append(doc)
+                
+                return documents
+                
+        except Exception as e:
+            log.error(f"Failed to get documents by PMID: {e}")
+            return []
+    
+    def store_patient_records(self, records: List[PatientRecord]) -> ProcessingResult:
         """Store multiple patient records in the database."""
         try:
             stored_ids = []
@@ -191,30 +338,67 @@ class SQLiteManager:
                 cursor = conn.cursor()
                 
                 for record in records:
-                    # Convert record data to database format
-                    db_data = self._convert_record_to_db_format(record)
-                    
+                    # Insert patient record
                     cursor.execute("""
-                        INSERT OR REPLACE INTO patient_records 
-                        (id, patient_id, source_document_id, pmid, 
-                         sex, age_of_onset, age_at_diagnosis, age_at_death, ethnicity, consanguinity,
-                         gene, mutations, inheritance, zygosity, parental_origin, genetic_testing, additional_genes,
-                         phenotypes, symptoms, diagnostic_findings, lab_values, imaging_findings,
-                         treatments, medications, dosages, treatment_response, adverse_events,
-                         survival_status, survival_time, cause_of_death, follow_up_duration, clinical_outcome,
-                         extraction_metadata, confidence_scores, validation_status, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, db_data)
+                        INSERT OR REPLACE INTO patient_records (
+                            id, patient_id, source_document_id, pmid,
+                            sex, age_of_onset, age_at_diagnosis, age_at_death,
+                            ethnicity, consanguinity, gene, mutations, inheritance,
+                            zygosity, parental_origin, genetic_testing, additional_genes,
+                            phenotypes, symptoms, diagnostic_findings, lab_values,
+                            imaging_findings, treatments, medications, dosages,
+                            treatment_response, adverse_events, survival_status,
+                            survival_time, cause_of_death, follow_up_duration,
+                            clinical_outcome, extraction_metadata, confidence_scores,
+                            validation_status
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        record.id,
+                        record.patient_id,
+                        record.source_document_id,
+                        record.pmid,
+                        record.sex,
+                        record.age_of_onset,
+                        record.age_at_diagnosis,
+                        record.age_at_death,
+                        record.ethnicity,
+                        record.consanguinity,
+                        record.gene,
+                        record.mutations,
+                        record.inheritance,
+                        record.zygosity,
+                        record.parental_origin,
+                        record.genetic_testing,
+                        record.additional_genes,
+                        record.phenotypes,
+                        record.symptoms,
+                        record.diagnostic_findings,
+                        record.lab_values,
+                        record.imaging_findings,
+                        record.treatments,
+                        record.medications,
+                        record.dosages,
+                        record.treatment_response,
+                        record.adverse_events,
+                        record.survival_status,
+                        record.survival_time,
+                        record.cause_of_death,
+                        record.follow_up_duration,
+                        record.clinical_outcome,
+                        json.dumps(record.extraction_metadata) if hasattr(record, 'extraction_metadata') else None,
+                        json.dumps(record.confidence_scores) if hasattr(record, 'confidence_scores') else None,
+                        record.validation_status
+                    ))
                     
                     stored_ids.append(record.id)
                 
                 conn.commit()
-                log.info(f"Stored {len(records)} patient records in database")
+                log.info(f"Stored {len(records)} patient records")
                 
                 return ProcessingResult(
                     success=True,
                     data=stored_ids,
-                    metadata={"total_records": len(records)}
+                    metadata={"total_stored": len(records)}
                 )
                 
         except Exception as e:
@@ -286,49 +470,42 @@ class SQLiteManager:
         )
     
     def get_patient_records(self, 
-                           pmid: Optional[int] = None,
                            gene: Optional[str] = None,
-                           limit: int = 100) -> ProcessingResult[List[Dict[str, Any]]]:
-        """Retrieve patient records from database."""
+                           phenotype: Optional[str] = None,
+                           age_range: Optional[Tuple[float, float]] = None,
+                           limit: int = 100) -> ProcessingResult:
+        """Get patient records with optional filtering."""
         try:
             with sqlite3.connect(self.db_path) as conn:
-                conn.row_factory = sqlite3.Row  # Enable column access by name
                 cursor = conn.cursor()
                 
+                # Build query
                 query = "SELECT * FROM patient_records WHERE 1=1"
                 params = []
                 
-                if pmid:
-                    query += " AND pmid = ?"
-                    params.append(pmid)
-                
                 if gene:
-                    query += " AND gene = ?"
-                    params.append(gene)
+                    query += " AND gene LIKE ?"
+                    params.append(f"%{gene}%")
                 
-                query += f" ORDER BY created_at DESC LIMIT {limit}"
+                if phenotype:
+                    query += " AND phenotypes LIKE ?"
+                    params.append(f"%{phenotype}%")
+                
+                if age_range:
+                    min_age, max_age = age_range
+                    query += " AND age_of_onset BETWEEN ? AND ?"
+                    params.extend([min_age, max_age])
+                
+                query += f" LIMIT {limit}"
                 
                 cursor.execute(query, params)
                 rows = cursor.fetchall()
                 
-                # Convert rows to dictionaries
+                # Convert to dictionaries
                 records = []
                 for row in rows:
-                    record_dict = dict(row)
-                    
-                    # Parse JSON fields back to objects
-                    json_fields = ['additional_genes', 'phenotypes', 'symptoms', 'diagnostic_findings',
-                                 'lab_values', 'imaging_findings', 'treatments', 'medications',
-                                 'dosages', 'adverse_events', 'extraction_metadata', 'confidence_scores']
-                    
-                    for field in json_fields:
-                        if record_dict.get(field):
-                            try:
-                                record_dict[field] = json.loads(record_dict[field])
-                            except (json.JSONDecodeError, TypeError):
-                                pass  # Keep as string if not valid JSON
-                    
-                    records.append(record_dict)
+                    record = dict(zip([col[0] for col in cursor.description], row))
+                    records.append(record)
                 
                 return ProcessingResult(
                     success=True,
@@ -337,54 +514,40 @@ class SQLiteManager:
                 )
                 
         except Exception as e:
-            log.error(f"Error retrieving patient records: {str(e)}")
+            log.error(f"Error getting patient records: {str(e)}")
             return ProcessingResult(
                 success=False,
-                error=f"Failed to retrieve patient records: {str(e)}"
+                error=f"Failed to get patient records: {str(e)}"
             )
     
-    def get_statistics(self) -> ProcessingResult[Dict[str, Any]]:
+    def get_statistics(self) -> ProcessingResult:
         """Get database statistics."""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Count records
+                # Count documents
                 cursor.execute("SELECT COUNT(*) FROM documents")
-                total_documents = cursor.fetchone()[0]
+                doc_count = cursor.fetchone()[0]
                 
+                # Count patient records
                 cursor.execute("SELECT COUNT(*) FROM patient_records")
-                total_records = cursor.fetchone()[0]
+                patient_count = cursor.fetchone()[0]
                 
                 # Count by gene
-                cursor.execute("""
-                    SELECT gene, COUNT(*) as count 
-                    FROM patient_records 
-                    WHERE gene IS NOT NULL 
-                    GROUP BY gene 
-                    ORDER BY count DESC 
-                    LIMIT 10
-                """)
-                top_genes = [{"gene": row[0], "count": row[1]} for row in cursor.fetchall()]
+                cursor.execute("SELECT gene, COUNT(*) FROM patient_records WHERE gene IS NOT NULL GROUP BY gene ORDER BY COUNT(*) DESC LIMIT 10")
+                gene_counts = dict(cursor.fetchall())
                 
-                # Count by PMID
-                cursor.execute("""
-                    SELECT pmid, COUNT(*) as count 
-                    FROM patient_records 
-                    WHERE pmid IS NOT NULL 
-                    GROUP BY pmid 
-                    ORDER BY count DESC 
-                    LIMIT 10
-                """)
-                top_pmids = [{"pmid": row[0], "count": row[1]} for row in cursor.fetchall()]
+                # Count by phenotype
+                cursor.execute("SELECT phenotypes, COUNT(*) FROM patient_records WHERE phenotypes IS NOT NULL GROUP BY phenotypes ORDER BY COUNT(*) DESC LIMIT 10")
+                phenotype_counts = dict(cursor.fetchall())
                 
                 stats = {
-                    "total_documents": total_documents,
-                    "total_patient_records": total_records,
-                    "top_genes": top_genes,
-                    "top_pmids": top_pmids,
-                    "database_path": str(self.db_path),
-                    "database_size_mb": self.db_path.stat().st_size / (1024 * 1024) if self.db_path.exists() else 0
+                    "total_documents": doc_count,
+                    "total_patients": patient_count,
+                    "top_genes": gene_counts,
+                    "top_phenotypes": phenotype_counts,
+                    "database_path": str(self.db_path)
                 }
                 
                 return ProcessingResult(
@@ -393,34 +556,36 @@ class SQLiteManager:
                 )
                 
         except Exception as e:
-            log.error(f"Error getting database statistics: {str(e)}")
+            log.error(f"Error getting statistics: {str(e)}")
             return ProcessingResult(
                 success=False,
-                error=f"Failed to get database statistics: {str(e)}"
+                error=f"Failed to get statistics: {str(e)}"
             )
     
-    def search_records(self, query: str, limit: int = 50) -> ProcessingResult[List[Dict[str, Any]]]:
-        """Search patient records using full-text search."""
+    def search_records(self, query: str, limit: int = 50) -> ProcessingResult:
+        """Search patient records by text query."""
         try:
             with sqlite3.connect(self.db_path) as conn:
-                conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 
-                # Simple text search across multiple fields
-                search_query = f"%{query}%"
-                cursor.execute("""
+                # Search across multiple fields
+                search_query = """
                     SELECT * FROM patient_records 
-                    WHERE patient_id LIKE ? 
-                       OR gene LIKE ? 
-                       OR mutations LIKE ? 
-                       OR phenotypes LIKE ? 
-                       OR symptoms LIKE ?
-                    ORDER BY created_at DESC 
+                    WHERE gene LIKE ? OR mutations LIKE ? OR phenotypes LIKE ? 
+                    OR symptoms LIKE ? OR diagnostic_findings LIKE ?
+                    ORDER BY id
                     LIMIT ?
-                """, (search_query, search_query, search_query, search_query, search_query, limit))
+                """
                 
+                search_term = f"%{query}%"
+                cursor.execute(search_query, [search_term] * 5 + [limit])
                 rows = cursor.fetchall()
-                records = [dict(row) for row in rows]
+                
+                # Convert to dictionaries
+                records = []
+                for row in rows:
+                    record = dict(zip([col[0] for col in cursor.description], row))
+                    records.append(record)
                 
                 return ProcessingResult(
                     success=True,
@@ -432,51 +597,38 @@ class SQLiteManager:
             log.error(f"Error searching records: {str(e)}")
             return ProcessingResult(
                 success=False,
-                error=f"Failed to search records: {str(e)}"
+                error=f"Search failed: {str(e)}"
             )
     
-    def export_to_csv(self, output_path: str) -> ProcessingResult[str]:
-        """Export patient records to CSV format."""
+    def export_to_csv(self, output_path: str) -> ProcessingResult:
+        """Export patient records to CSV file."""
         try:
             import pandas as pd
             
-            records_result = self.get_patient_records(limit=10000)  # Get all records
-            if not records_result.success:
-                return records_result
-            
-            records = records_result.data
-            if not records:
+            with sqlite3.connect(self.db_path) as conn:
+                # Read all patient records
+                df = pd.read_sql_query("SELECT * FROM patient_records", conn)
+                
+                # Export to CSV
+                df.to_csv(output_path, index=False)
+                
+                log.info(f"Exported {len(df)} records to {output_path}")
+                
                 return ProcessingResult(
-                    success=False,
-                    error="No records to export"
+                    success=True,
+                    data=output_path,
+                    metadata={"total_exported": len(df)}
                 )
-            
-            # Convert to DataFrame
-            df = pd.DataFrame(records)
-            
-            # Convert JSON fields to strings for CSV
-            json_fields = ['additional_genes', 'phenotypes', 'symptoms', 'diagnostic_findings',
-                         'lab_values', 'imaging_findings', 'treatments', 'medications',
-                         'dosages', 'adverse_events']
-            
-            for field in json_fields:
-                if field in df.columns:
-                    df[field] = df[field].apply(lambda x: json.dumps(x) if isinstance(x, (list, dict)) else x)
-            
-            # Export to CSV
-            df.to_csv(output_path, index=False)
-            log.info(f"Exported {len(records)} records to {output_path}")
-            
+                
+        except ImportError:
             return ProcessingResult(
-                success=True,
-                data=output_path,
-                metadata={"total_records": len(records)}
+                success=False,
+                error="pandas not available for CSV export"
             )
-            
         except Exception as e:
             log.error(f"Error exporting to CSV: {str(e)}")
             return ProcessingResult(
                 success=False,
-                error=f"Failed to export to CSV: {str(e)}"
+                error=f"Export failed: {str(e)}"
             )
 

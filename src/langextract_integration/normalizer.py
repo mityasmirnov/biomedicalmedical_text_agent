@@ -1,18 +1,18 @@
 """
-Biomedical Normalizer
+Biomedic Data Normalizer
 
-Normalizes LangExtract results to match the biomedical table schema
-and integrates with HPO/HGNC ontologies for standardization.
+This module normalizes LangExtract results to biomedical table schema.
 """
 
-import json
 import logging
+import json
 import pandas as pd
 from typing import Dict, List, Any, Optional, Union, Set
 from pathlib import Path
 from datetime import datetime
 
-from core.config import Config
+# Remove circular import
+# from core.config import Config
 from ontologies.hpo_manager import HPOManager
 from ontologies.gene_manager import GeneManager
 
@@ -31,14 +31,14 @@ class BiomedicNormalizer:
     - Quality validation
     """
     
-    def __init__(self, config: Optional[Config] = None):
+    def __init__(self, config: Optional[Any] = None):
         """
         Initialize normalizer.
         
         Args:
-            config: System configuration
+            config: System configuration (optional to avoid circular imports)
         """
-        self.config = config or Config()
+        self.config = config
         
         # Initialize ontology managers
         try:

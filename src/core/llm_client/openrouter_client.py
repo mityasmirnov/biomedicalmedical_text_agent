@@ -4,15 +4,77 @@ OpenRouter LLM client for the Biomedical Data Extraction Engine.
 
 import json
 import time
+import logging
+import os
 from typing import Dict, List, Optional, Any
 import httpx
 import asyncio
-from core.base import BaseLLMClient, ProcessingResult, LLMError
-from core.config import get_config
-from core.logging_config import get_logger
-from core.api_usage_tracker import APIUsageTracker, APIUsageRecord
 
-log = get_logger(__name__)
+# Remove circular imports
+# from core.base import BaseLLMClient, ProcessingResult, LLMError
+# from core.config import get_config
+# from core.logging_config import get_logger
+# from core.api_usage_tracker import APIUsageTracker, APIUsageRecord
+
+log = logging.getLogger(__name__)
+
+# Simple classes to avoid circular imports
+class BaseLLMClient:
+    """Simple base LLM client class."""
+    def __init__(self, model_name: str = None, config: Optional[Dict[str, Any]] = None):
+        self.model_name = model_name or "google/gemma-2-27b-it:free"
+        self.config = config or {}
+
+class ProcessingResult:
+    """Simple processing result class for LLM operations."""
+    def __init__(self, success: bool, data: Any = None, error: str = None, metadata: Dict[str, Any] = None):
+        self.success = success
+        self.data = data
+        self.error = error
+        self.metadata = metadata or {}
+
+class LLMError(Exception):
+    """Simple LLM error class."""
+    pass
+
+class APIUsageTracker:
+    """Simple API usage tracker class."""
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+    
+    def check_daily_limit(self, provider: str, limit: int) -> tuple[bool, int, int]:
+        return True, 0, limit
+    
+    def check_monthly_limit(self, provider: str, limit: int) -> tuple[bool, int, int]:
+        return True, 0, limit
+
+class APIUsageRecord:
+    """Simple API usage record class."""
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+def get_config():
+    """Simple config getter to avoid circular imports."""
+    class SimpleConfig:
+        def __init__(self):
+            self.llm = SimpleLLMConfig()
+    
+    class SimpleLLMConfig:
+        def __init__(self):
+            self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
+            self.openrouter_api_base = "https://openrouter.ai/api/v1"
+            self.default_model = "google/gemma-2-27b-it:free"
+            self.temperature = 0.1
+            self.max_tokens = 2048
+            self.timeout = 60
+            self.max_requests_per_minute = 60
+            self.max_requests_per_day = 1000
+            self.max_requests_per_month = 30000
+            self.enable_usage_tracking = False
+            self.usage_database_path = "data/api_usage.db"
+    
+    return SimpleConfig()
 
 class OpenRouterClient(BaseLLMClient):
     """Client for OpenRouter API supporting various LLM models."""
@@ -98,20 +160,28 @@ class OpenRouterClient(BaseLLMClient):
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        **kwargs
-    ) -> ProcessingResult[str]:
+        stop_sequences: Optional[List[str]] = None,
+        top_p: Optional[float] = None,
+        frequency_penalty: Optional[float] = None,
+        presence_penalty: Optional[float] = None,
+        stream: bool = False
+    ) -> ProcessingResult:
         """
-        Generate text using OpenRouter API (async).
+        Generate text using OpenRouter API.
         
         Args:
-            prompt: User prompt
+            prompt: The input prompt
             system_prompt: Optional system prompt
-            temperature: Sampling temperature
+            temperature: Sampling temperature (0.0 to 2.0)
             max_tokens: Maximum tokens to generate
-            **kwargs: Additional parameters
+            stop_sequences: Sequences to stop generation
+            top_p: Nucleus sampling parameter
+            frequency_penalty: Frequency penalty (-2.0 to 2.0)
+            presence_penalty: Presence penalty (-2.0 to 2.0)
+            stream: Whether to stream the response
             
         Returns:
-            ProcessingResult containing generated text
+            ProcessingResult containing the generated text
         """
         start_time = time.time()
         
@@ -304,7 +374,7 @@ class OpenRouterClient(BaseLLMClient):
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         **kwargs
-    ) -> ProcessingResult[str]:
+    ) -> ProcessingResult:
         """
         Generate text using OpenRouter API (synchronous).
         

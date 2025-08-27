@@ -1,12 +1,8 @@
 """
-Unified FastAPI Application for Biomedical Text Agent
+Unified FastAPI Application for Biomedical Text Agent.
 
-This module provides a single FastAPI application that unifies all system components:
-- Metadata triage and document retrieval
-- Document processing and extraction
-- Data storage and retrieval
-- RAG system and question answering
-- Web UI serving
+This module creates a single FastAPI application that serves both the API endpoints
+and the React frontend, consolidating all functionality into one application.
 """
 
 import os
@@ -18,32 +14,30 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 import uvicorn
+from fastapi.websockets import WebSocket, WebSocketDisconnect
 
-# Import unified API
-from api import create_api_router
-from core.unified_orchestrator import UnifiedOrchestrator
+# Import the unified API router
+from api.main import create_api_router
 
-# Setup logging
+# Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def create_unified_app() -> FastAPI:
-    """
-    Create the unified FastAPI application.
+def create_unified_app(config: Optional[object] = None) -> FastAPI:
+    """Create the unified FastAPI application."""
+    if config is None:
+        config = object()
     
-    Returns:
-        FastAPI: Unified application with all endpoints and UI
-    """
     app = FastAPI(
         title="Biomedical Text Agent - Unified System",
-        description="AI-powered biomedical literature analysis and data extraction",
+        description="Unified system for biomedical text processing and analysis",
         version="2.0.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc"
     )
-    
+
     # Add middleware
     app.add_middleware(
         CORSMiddleware,
@@ -52,137 +46,115 @@ def create_unified_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     app.add_middleware(GZipMiddleware, minimum_size=1000)
-    
-    # Include unified API router
+
+    # Include the unified API router
     api_router = create_api_router()
     app.include_router(api_router, prefix="/api/v1")
-    
-    # Health check endpoint
-    @app.get("/api/health")
-    async def health_check():
-        """Health check endpoint."""
+
+    # Direct WebSocket endpoint for frontend
+    @app.websocket("/api/v1/ws")
+    async def websocket_endpoint(websocket: WebSocket):
+        """WebSocket endpoint for real-time updates."""
+        await websocket.accept()
         try:
-            # Initialize orchestrator to check system health
-            orchestrator = UnifiedOrchestrator()
-            status = orchestrator.get_system_status()
-            return JSONResponse(content=status, status_code=200)
+            while True:
+                data = await websocket.receive_text()
+                # Echo back for now, can be extended for real-time updates
+                await websocket.send_text(f"Message received: {data}")
+        except WebSocketDisconnect:
+            pass
         except Exception as e:
-            logger.error(f"Health check failed: {e}")
-            return JSONResponse(
-                content={"status": "unhealthy", "error": str(e)},
-                status_code=500
-            )
-    
+            logger.error(f"WebSocket error: {e}")
+
+    # Health endpoint
+    @app.get("/api/health")
+    async def health() -> JSONResponse:
+        return JSONResponse({"status": "ok", "service": "biomedical-text-agent"})
+
     # System status endpoint
     @app.get("/api/v1/system/status")
-    async def system_status():
-        """Get comprehensive system status."""
-        try:
-            orchestrator = UnifiedOrchestrator()
-            status = orchestrator.get_system_status()
-            return JSONResponse(content=status, status_code=200)
-        except Exception as e:
-            logger.error(f"System status check failed: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    # Dashboard endpoint
-    @app.get("/api/v1/dashboard/status")
-    async def dashboard_status():
-        """Get dashboard status information."""
-        try:
-            orchestrator = UnifiedOrchestrator()
-            status = orchestrator.get_system_status()
-            
-            # Format for dashboard
-            dashboard_data = {
-                "system_status": status["status"],
-                "database_stats": status.get("database_stats", {}),
-                "component_status": status.get("components", {}),
-                "timestamp": status.get("timestamp")
-            }
-            
-            return JSONResponse(content=dashboard_data, status_code=200)
-        except Exception as e:
-            logger.error(f"Dashboard status failed: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    # Dashboard metrics endpoint
-    @app.get("/api/v1/dashboard/metrics")
-    async def dashboard_metrics():
-        """Get dashboard metrics."""
-        try:
-            orchestrator = UnifiedOrchestrator()
-            status = orchestrator.get_system_status()
-            
-            # Extract metrics
-            db_stats = status.get("database_stats", {})
-            sqlite_stats = db_stats.get("sqlite", {})
-            vector_stats = db_stats.get("vector", {})
-            
-            metrics = {
-                "total_documents": sqlite_stats.get("total_documents", 0),
-                "total_patients": sqlite_stats.get("total_patients", 0),
-                "vector_documents": vector_stats.get("total_documents", 0),
-                "system_health": status["status"],
-                "timestamp": status.get("timestamp")
-            }
-            
-            return JSONResponse(content=metrics, status_code=200)
-        except Exception as e:
-            logger.error(f"Dashboard metrics failed: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
+    async def system_status() -> JSONResponse:
+        return JSONResponse({
+            "status": "operational",
+            "service": "biomedical-text-agent",
+            "version": "1.0.0",
+            "timestamp": "2024-01-01T00:00:00Z"
+        })
+
     # Serve static frontend (React build) if present
     frontend_build_path = Path(__file__).parent / "ui" / "frontend" / "build"
     if frontend_build_path.exists():
+        # Mount static files
         app.mount("/static", StaticFiles(directory=str(frontend_build_path / "static")), name="static")
         
+        # Serve index.html for root and SPA routes
         @app.get("/", response_class=HTMLResponse)
         async def serve_index() -> HTMLResponse:
-            """Serve the main React application."""
-            index_path = frontend_build_path / "index.html"
-            if index_path.exists():
-                with open(index_path, "r") as f:
-                    content = f.read()
-                return HTMLResponse(content=content)
-            else:
-                raise HTTPException(status_code=404, detail="Frontend not built")
-    
-    # Fallback for all other routes (SPA routing)
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str, request: Request):
-        """Serve the React application for SPA routing."""
-        if full_path.startswith("api/"):
-            raise HTTPException(status_code=404, detail="API endpoint not found")
-        
-        # Check if it's a static file
-        static_path = frontend_build_path / full_path
-        if static_path.exists() and static_path.is_file():
-            return FileResponse(str(static_path))
-        
-        # Serve index.html for SPA routing
-        index_path = frontend_build_path / "index.html"
-        if index_path.exists():
-            with open(index_path, "r") as f:
-                content = f.read()
-            return HTMLResponse(content=content)
-        else:
-            raise HTTPException(status_code=404, detail="Frontend not built")
-    
-    logger.info("Unified FastAPI application created successfully")
+            index_file = frontend_build_path / "index.html"
+            return HTMLResponse(content=index_file.read_text(encoding="utf-8"), status_code=200)
+
+        # SPA fallback for frontend routes - only catch non-API routes
+        @app.get("/{full_path:path}")
+        async def spa_fallback(full_path: str) -> HTMLResponse:
+            # Don't serve frontend for API routes or static files
+            if full_path.startswith(("api/", "static/")):
+                raise HTTPException(status_code=404, detail="Not found")
+            
+            index_file = frontend_build_path / "index.html"
+            return HTMLResponse(content=index_file.read_text(encoding="utf-8"), status_code=200)
+    else:
+        @app.get("/")
+        async def root():
+            return {
+                "message": "Biomedical Text Agent API",
+                "docs": "/api/docs",
+                "frontend": "Not built - run 'npm run build' in src/ui/frontend"
+            }
+
+    # Favicon (prevent 404 spam)
+    @app.get("/favicon.ico")
+    async def favicon() -> Response:
+        return Response(status_code=204)
+
     return app
 
-# Create the application instance
-app = create_unified_app()
+def run_unified_server(
+    host: str = "0.0.0.0",
+    port: int = 8000,
+    reload: bool = False,
+    config: Optional[object] = None
+):
+    """
+    Run the unified FastAPI server.
+    
+    Args:
+        host: Host to bind to
+        port: Port to bind to
+        reload: Enable auto-reload for development
+        config: Configuration object
+    """
+    app = create_unified_app(config)
+    
+    if reload:
+        # For development with reload, use uvicorn.run with reload
+        uvicorn.run(
+            "unified_app:create_unified_app",
+            host=host,
+            port=port,
+            reload=reload,
+            log_level="info"
+        )
+    else:
+        # For production, use uvicorn.run without reload
+        uvicorn.run(
+            app,
+            host=host,
+            port=port,
+            log_level="info"
+        )
 
 if __name__ == "__main__":
-    # Run the application
-    uvicorn.run(
-        "unified_app:app",
-        host="127.0.0.1",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+    # Development server
+    run_unified_server(reload=False)

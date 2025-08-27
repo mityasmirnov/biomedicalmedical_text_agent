@@ -3,23 +3,36 @@ PDF parsing module for the Biomedical Data Extraction Engine.
 """
 
 import re
+import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 import fitz  # PyMuPDF
-from core.base import BaseProcessor, Document, DocumentFormat, ProcessingResult
-from core.logging_config import get_logger
 
-log = get_logger(__name__)
+# Remove circular imports
+# from core.base import BaseProcessor, Document, DocumentFormat, ProcessingResult
+# from core.logging_config import get_logger
 
-class PDFParser(BaseProcessor[str, Document]):
+log = logging.getLogger(__name__)
+
+# Simple document class to avoid circular imports
+class Document:
+    """Simple document class for PDF parsing."""
+    def __init__(self, title: str, content: str, format: str, source_path: str, metadata: Dict[str, Any]):
+        self.title = title
+        self.content = content
+        self.format = format
+        self.source_path = source_path
+        self.metadata = metadata
+
+class PDFParser:
     """PDF parser that extracts text and metadata from PDF documents."""
     
     def __init__(self, **kwargs):
-        super().__init__(name="pdf_parser", **kwargs)
-        self.enable_table_extraction = self.get_config("enable_table_extraction", False)
-        self.preserve_formatting = self.get_config("preserve_formatting", True)
+        self.name = "pdf_parser"
+        self.enable_table_extraction = kwargs.get("enable_table_extraction", False)
+        self.preserve_formatting = kwargs.get("preserve_formatting", True)
     
-    def process(self, input_data: str) -> ProcessingResult[Document]:
+    def process(self, input_data: str) -> Document:
         """
         Process a PDF file and extract text content.
         
@@ -27,15 +40,12 @@ class PDFParser(BaseProcessor[str, Document]):
             input_data: Path to the PDF file
             
         Returns:
-            ProcessingResult containing the extracted Document
+            Document containing the extracted content
         """
         try:
             pdf_path = Path(input_data)
             if not pdf_path.exists():
-                return ProcessingResult(
-                    success=False,
-                    error=f"PDF file not found: {pdf_path}"
-                )
+                raise FileNotFoundError(f"PDF file not found: {pdf_path}")
             
             log.info(f"Processing PDF: {pdf_path}")
             
@@ -50,29 +60,18 @@ class PDFParser(BaseProcessor[str, Document]):
             document = Document(
                 title=metadata.get("title", pdf_path.stem),
                 content=cleaned_text,
-                format=DocumentFormat.PDF,
+                format="PDF",
                 source_path=str(pdf_path),
                 metadata=metadata
             )
             
             log.info(f"Successfully processed PDF: {pdf_path} ({len(cleaned_text)} characters)")
             
-            return ProcessingResult(
-                success=True,
-                data=document,
-                metadata={
-                    "original_length": len(text_content),
-                    "cleaned_length": len(cleaned_text),
-                    "pages": metadata.get("pages", 0)
-                }
-            )
+            return document
             
         except Exception as e:
             log.error(f"Error processing PDF {input_data}: {str(e)}")
-            return ProcessingResult(
-                success=False,
-                error=f"PDF processing failed: {str(e)}"
-            )
+            raise
     
     def _extract_text(self, pdf_path: Path) -> str:
         """Extract text from PDF using PyMuPDF."""

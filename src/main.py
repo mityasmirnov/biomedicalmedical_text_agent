@@ -1,353 +1,156 @@
+#!/usr/bin/env python3
 """
-Main CLI interface for the Biomedical Data Extraction Engine.
+Main CLI interface for Biomedical Text Agent.
+
+This module provides a command-line interface for the unified Biomedical Text Agent system.
 """
 
-import asyncio
-import json
+import argparse
 import sys
+import logging
 from pathlib import Path
-from typing import List, Optional
-import click
-from rich.console import Console
-from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.panel import Panel
-from rich.json import JSON
 
-# Add src to path for imports
+# Add current directory to Python path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from core.config import get_config
-from core.logging_config import setup_logging, get_logger
-from agents.orchestrator.extraction_orchestrator import ExtractionOrchestrator
+from unified_app import run_unified_server
 
-console = Console()
-log = get_logger(__name__)
+def setup_logging(verbose: bool = False):
+    """Setup logging configuration."""
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
 
-@click.group()
-@click.option('--debug', is_flag=True, help='Enable debug logging')
-@click.option('--log-file', help='Log file path')
-def cli(debug, log_file):
-    """Biomedical Data Extraction Engine CLI."""
+def main():
+    """Main CLI function."""
+    parser = argparse.ArgumentParser(
+        description="Biomedical Text Agent - Unified System",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s                    # Start the unified system
+  %(prog)s --port 8080       # Start on port 8080
+  %(prog)s --host 0.0.0.0    # Bind to all interfaces
+  %(prog)s --reload          # Enable auto-reload (development)
+  %(prog)s --verbose         # Enable verbose logging
+        """
+    )
+    
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host to bind to (default: 127.0.0.1)"
+    )
+    
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind to (default: 8000)"
+    )
+    
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="Enable auto-reload for development"
+    )
+    
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable verbose logging"
+    )
+    
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Check system configuration and exit"
+    )
+    
+    args = parser.parse_args()
+    
     # Setup logging
-    log_config = {}
-    if debug:
-        log_config['log_level'] = 'DEBUG'
-    if log_file:
-        log_config['log_file'] = log_file
+    setup_logging(args.verbose)
     
-    setup_logging(log_config)
+    # Check if we're in the right directory
+    if not (Path.cwd() / "src").exists():
+        print("❌ Error: Please run this script from the project root directory")
+        print("   Current directory:", Path.cwd())
+        print("   Expected to find 'src' directory here")
+        sys.exit(1)
     
-    console.print(Panel.fit(
-        "[bold blue]Biomedical Data Extraction Engine[/bold blue]\n"
-        "AI-powered extraction of patient data from medical literature",
-        border_style="blue"
-    ))
-
-@cli.command()
-@click.argument('file_path', type=click.Path(exists=True))
-@click.option('--output', '-o', help='Output file path (JSON format)')
-@click.option('--format', 'output_format', default='json', 
-              type=click.Choice(['json', 'csv', 'table']), 
-              help='Output format')
-@click.option('--validate', is_flag=True, help='Validate against ground truth')
-@click.option('--ground-truth', help='Ground truth file for validation')
-def extract(file_path, output, output_format, validate, ground_truth):
-    """Extract patient data from a medical document."""
-    
-    async def run_extraction():
-        try:
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            ) as progress:
-                
-                # Initialize LLM client and orchestrator
-                task = progress.add_task("Initializing extraction pipeline...", total=None)
-                from core.llm_client.openrouter_client import OpenRouterClient
-                llm_client = OpenRouterClient()
-                orchestrator = ExtractionOrchestrator(llm_client=llm_client)
-                
-                # Run extraction
-                progress.update(task, description=f"Processing {Path(file_path).name}...")
-                result = await orchestrator.extract_from_file(file_path)
-                
-                progress.update(task, description="Extraction completed", completed=True)
-            
-            if not result.success:
-                console.print(f"[red]Extraction failed: {result.error}[/red]")
-                return
-            
-            records = result.data
-            console.print(f"[green]Successfully extracted {len(records)} patient records[/green]")
-            
-            # Display warnings if any
-            if result.warnings:
-                console.print(f"[yellow]Warnings ({len(result.warnings)}):[/yellow]")
-                for warning in result.warnings:
-                    console.print(f"  • {warning}")
-            
-            # Output results
-            if output_format == 'table':
-                display_records_table(records)
-            elif output_format == 'json':
-                json_output = [record.data for record in records]
-                if output:
-                    save_json_output(json_output, output)
-                else:
-                    console.print(JSON.from_data(json_output))
-            elif output_format == 'csv':
-                csv_output = output if output else f"{Path(file_path).stem}_extracted.csv"
-                save_csv_output(records, csv_output)
-            
-            # Validation against ground truth
-            if validate and ground_truth:
-                validate_against_ground_truth(records, ground_truth)
-            
-            # Display statistics
-            stats = orchestrator.get_extraction_statistics(records)
-            display_statistics(stats)
-            
-        except Exception as e:
-            console.print(f"[red]Error: {str(e)}[/red]")
-            log.error(f"CLI extraction error: {str(e)}")
-    
-    asyncio.run(run_extraction())
-
-@cli.command()
-@click.argument('directory', type=click.Path(exists=True, file_okay=False))
-@click.option('--pattern', default='*.pdf', help='File pattern to match')
-@click.option('--output', '-o', help='Output directory')
-@click.option('--max-files', type=int, help='Maximum number of files to process')
-def batch(directory, pattern, output, max_files):
-    """Extract patient data from multiple files in a directory."""
-    
-    async def run_batch_extraction():
-        try:
-            # Find files
-            dir_path = Path(directory)
-            files = list(dir_path.glob(pattern))
-            
-            if max_files:
-                files = files[:max_files]
-            
-            if not files:
-                console.print(f"[yellow]No files found matching pattern '{pattern}' in {directory}[/yellow]")
-                return
-            
-            console.print(f"Found {len(files)} files to process")
-            
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            ) as progress:
-                
-                # Initialize LLM client and orchestrator
-                task = progress.add_task("Initializing batch extraction...", total=None)
-                from core.llm_client.openrouter_client import OpenRouterClient
-                llm_client = OpenRouterClient()
-                orchestrator = ExtractionOrchestrator(llm_client=llm_client)
-                
-                # Run batch extraction
-                progress.update(task, description=f"Processing {len(files)} files...")
-                result = await orchestrator.extract_batch([str(f) for f in files])
-                
-                progress.update(task, description="Batch extraction completed", completed=True)
-            
-            if not result.success:
-                console.print(f"[red]Batch extraction failed: {result.error}[/red]")
-                return
-            
-            records = result.data
-            console.print(f"[green]Successfully extracted {len(records)} patient records from {len(files)} files[/green]")
-            
-            # Save results
-            if output:
-                output_path = Path(output)
-                output_path.mkdir(parents=True, exist_ok=True)
-                
-                # Save individual files
-                for i, record in enumerate(records):
-                    record_file = output_path / f"record_{i+1}_{record.patient_id}.json"
-                    with open(record_file, 'w') as f:
-                        json.dump(record.data, f, indent=2, default=str)
-                
-                # Save combined file
-                combined_file = output_path / "all_records.json"
-                with open(combined_file, 'w') as f:
-                    json.dump([r.data for r in records], f, indent=2, default=str)
-                
-                console.print(f"Results saved to {output_path}")
-            
-            # Display statistics
-            stats = orchestrator.get_extraction_statistics(records)
-            display_statistics(stats)
-            
-        except Exception as e:
-            console.print(f"[red]Error: {str(e)}[/red]")
-            log.error(f"CLI batch extraction error: {str(e)}")
-    
-    asyncio.run(run_batch_extraction())
-
-@cli.command()
-def test():
-    """Test the extraction pipeline with the provided sample file."""
-    
-    config = get_config()
-    sample_file = config.paths.data_dir / "input" / "PMID32679198.pdf"
-    
-    if not sample_file.exists():
-        console.print(f"[red]Sample file not found: {sample_file}[/red]")
-        console.print("Please ensure PMID32679198.pdf is in the data/input directory")
+    # System check
+    if args.check:
+        print("🔍 Checking system configuration...")
+        
+        # Check required directories
+        required_dirs = ["src", "data", "docs"]
+        missing_dirs = [d for d in required_dirs if not Path(d).exists()]
+        
+        if missing_dirs:
+            print(f"❌ Missing directories: {missing_dirs}")
+            sys.exit(1)
+        else:
+            print("✅ Required directories found")
+        
+        # Check frontend build
+        frontend_build = Path("src/ui/frontend/build")
+        if frontend_build.exists():
+            print("✅ Frontend build found")
+        else:
+            print("⚠️  Frontend not built (will run API only)")
+        
+        # Check virtual environment
+        if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+            print("✅ Virtual environment active")
+        else:
+            print("⚠️  Virtual environment not detected")
+        
+        print("✅ System configuration check passed")
         return
     
-    console.print(f"Testing extraction with sample file: {sample_file.name}")
+    # Print startup information
+    print("🚀 Biomedical Text Agent - Unified System")
+    print("=" * 60)
+    print(f"Host: {args.host}")
+    print(f"Port: {args.port}")
+    print(f"Reload: {'Enabled' if args.reload else 'Disabled'}")
+    print(f"Verbose: {'Enabled' if args.verbose else 'Disabled'}")
+    print()
     
-    # Run extraction
-    ctx = click.Context(extract)
-    ctx.invoke(extract, 
-               file_path=str(sample_file), 
-               output_format='table',
-               validate=True,
-               ground_truth=str(config.paths.data_dir / "ground_truth" / "manually_processed.csv"))
-
-@cli.command()
-def config_info():
-    """Display current configuration information."""
-    config = get_config()
+    print("📋 System Components:")
+    print("   • Unified FastAPI Application")
+    print("   • Consolidated API Endpoints")
+    print("   • Database Management")
+    print("   • Metadata Triage System")
+    print("   • LangExtract Integration")
+    print("   • RAG System")
+    print("   • React Frontend (if built)")
     
-    config_table = Table(title="Configuration Information")
-    config_table.add_column("Setting", style="cyan")
-    config_table.add_column("Value", style="green")
+    print("\n🔧 Starting unified system...")
+    print(f"   API Documentation: http://{args.host}:{args.port}/api/docs")
+    print(f"   Frontend: http://{args.host}:{args.port}/")
+    print(f"   Health Check: http://{args.host}:{args.port}/api/health")
+    print(f"   System Status: http://{args.host}:{args.port}/api/v1/system/status")
     
-    config_table.add_row("Environment", config.environment)
-    config_table.add_row("Debug Mode", str(config.debug))
-    config_table.add_row("Data Directory", str(config.paths.data_dir))
-    config_table.add_row("LLM Model", config.llm.default_model)
-    config_table.add_row("LLM Temperature", str(config.llm.temperature))
-    config_table.add_row("Max Workers", str(config.processing.max_workers))
-    config_table.add_row("Supported Formats", ", ".join(config.processing.supported_formats))
+    print("\n" + "=" * 60)
     
-    console.print(config_table)
-
-def display_records_table(records):
-    """Display extracted records in a table format."""
-    if not records:
-        console.print("[yellow]No records to display[/yellow]")
-        return
-    
-    table = Table(title="Extracted Patient Records")
-    
-    # Add columns based on first record
-    first_record = records[0]
-    key_fields = ["patient_id", "sex", "age_of_onset", "gene", "mutations"]
-    
-    for field in key_fields:
-        if field in first_record.data:
-            table.add_column(field.replace("_", " ").title(), style="cyan")
-    
-    # Add rows
-    for record in records:
-        row_data = []
-        for field in key_fields:
-            if field in record.data:
-                value = record.data[field]
-                if value is None:
-                    row_data.append("[dim]null[/dim]")
-                else:
-                    row_data.append(str(value))
-        table.add_row(*row_data)
-    
-    console.print(table)
-
-def save_json_output(data, output_path):
-    """Save data as JSON file."""
-    with open(output_path, 'w') as f:
-        json.dump(data, f, indent=2, default=str)
-    console.print(f"[green]Results saved to {output_path}[/green]")
-
-def save_csv_output(records, output_path):
-    """Save records as CSV file."""
-    import pandas as pd
-    
-    # Convert records to DataFrame
-    data = [record.data for record in records]
-    df = pd.DataFrame(data)
-    df.to_csv(output_path, index=False)
-    console.print(f"[green]Results saved to {output_path}[/green]")
-
-def validate_against_ground_truth(records, ground_truth_path):
-    """Validate extracted records against ground truth."""
     try:
-        import pandas as pd
-        
-        # Load ground truth
-        gt_df = pd.read_csv(ground_truth_path)
-        
-        # Convert records to DataFrame
-        extracted_df = pd.DataFrame([r.data for r in records])
-        
-        console.print(f"\n[bold]Validation Results:[/bold]")
-        console.print(f"Ground truth records: {len(gt_df)}")
-        console.print(f"Extracted records: {len(extracted_df)}")
-        
-        # Compare key fields if they exist in both
-        common_fields = set(gt_df.columns) & set(extracted_df.columns)
-        if common_fields:
-            console.print(f"Common fields: {', '.join(common_fields)}")
-            
-            # Simple accuracy calculation for non-null values
-            for field in common_fields:
-                if field in ['patient_id']:  # Skip ID fields
-                    continue
-                
-                gt_values = gt_df[field].dropna()
-                ext_values = extracted_df[field].dropna()
-                
-                if len(gt_values) > 0 and len(ext_values) > 0:
-                    # This is a simplified comparison - in practice, you'd want more sophisticated matching
-                    console.print(f"  {field}: GT={len(gt_values)} values, Extracted={len(ext_values)} values")
-        
+        # Start the unified server
+        run_unified_server(
+            host=args.host,
+            port=args.port,
+            reload=args.reload
+        )
+    except KeyboardInterrupt:
+        print("\n\n🛑 System stopped by user")
     except Exception as e:
-        console.print(f"[red]Validation error: {str(e)}[/red]")
-
-def display_statistics(stats):
-    """Display extraction statistics."""
-    if not stats:
-        return
-    
-    console.print(f"\n[bold]Extraction Statistics:[/bold]")
-    
-    stats_table = Table()
-    stats_table.add_column("Metric", style="cyan")
-    stats_table.add_column("Value", style="green")
-    
-    stats_table.add_row("Total Records", str(stats.get("total_records", 0)))
-    stats_table.add_row("Unique Sources", str(stats.get("unique_sources", 0)))
-    stats_table.add_row("Average Confidence", f"{stats.get('avg_confidence', 0):.2f}")
-    
-    console.print(stats_table)
-    
-    # Field extraction rates
-    fields_extracted = stats.get("fields_extracted", {})
-    if fields_extracted:
-        console.print(f"\n[bold]Field Extraction Rates:[/bold]")
-        field_table = Table()
-        field_table.add_column("Field", style="cyan")
-        field_table.add_column("Count", style="green")
-        field_table.add_column("Percentage", style="yellow")
-        
-        for field, info in fields_extracted.items():
-            field_table.add_row(
-                field,
-                str(info["count"]),
-                f"{info['percentage']:.1f}%"
-            )
-        
-        console.print(field_table)
+        print(f"\n❌ Failed to start system: {e}")
+        logging.error(f"Startup error: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    cli()
+    main()
 

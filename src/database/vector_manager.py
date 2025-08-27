@@ -4,13 +4,31 @@ Vector database manager for semantic search and document indexing.
 
 import json
 import pickle
+import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
-from core.base import Document, ProcessingResult
-from core.logging_config import get_logger
 
-log = get_logger(__name__)
+# Remove circular imports
+# from core.base import Document, ProcessingResult
+# from core.logging_config import get_logger
+
+log = logging.getLogger(__name__)
+
+# Simple classes to avoid circular imports
+class Document:
+    """Simple document class for vector operations."""
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+class ProcessingResult:
+    """Simple processing result class for vector operations."""
+    def __init__(self, success: bool, data: Any = None, error: str = None, metadata: Dict[str, Any] = None):
+        self.success = success
+        self.data = data
+        self.error = error
+        self.metadata = metadata or {}
 
 class VectorManager:
     """Manages vector database operations for semantic search."""
@@ -133,7 +151,7 @@ class VectorManager:
             
             return np.array(embeddings, dtype=np.float32)
     
-    def add_documents(self, documents: List[Document]) -> ProcessingResult[int]:
+    def add_documents(self, documents: List[Document]) -> ProcessingResult:
         """Add documents to the vector index."""
         try:
             if not documents:
@@ -211,7 +229,7 @@ class VectorManager:
                 error=f"Failed to add documents: {str(e)}"
             )
     
-    def search(self, query: str, top_k: int = 10) -> ProcessingResult[List[Dict[str, Any]]]:
+    def search(self, query: str, top_k: int = 10) -> ProcessingResult:
         """Search for similar documents using vector similarity."""
         try:
             if not self.document_metadata:
@@ -317,7 +335,7 @@ class VectorManager:
         except Exception as e:
             log.error(f"Error saving vector index: {str(e)}")
     
-    def get_statistics(self) -> ProcessingResult[Dict[str, Any]]:
+    def get_statistics(self) -> ProcessingResult:
         """Get vector database statistics."""
         try:
             total_vectors = 0
@@ -347,7 +365,7 @@ class VectorManager:
                 error=f"Failed to get statistics: {str(e)}"
             )
     
-    def clear_index(self) -> ProcessingResult[bool]:
+    def clear_index(self) -> ProcessingResult:
         """Clear the vector index and metadata."""
         try:
             if self.faiss_index is not None:

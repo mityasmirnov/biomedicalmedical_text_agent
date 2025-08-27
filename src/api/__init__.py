@@ -7,6 +7,10 @@ This module provides a single REST API interface that connects all system compon
 - Data storage and retrieval
 - RAG system and question answering
 - User management and authentication
+- Dashboard and system monitoring
+- Agent management
+- Document management
+- Metadata browsing and search
 """
 
 from .main import create_api_router
@@ -15,7 +19,11 @@ from .endpoints import (
     extraction_router,
     database_router,
     rag_router,
-    user_router
+    user_router,
+    dashboard_router,
+    agents_router,
+    documents_router,
+    metadata_router
 )
 
 __all__ = [
@@ -24,5 +32,9 @@ __all__ = [
     'extraction_router', 
     'database_router',
     'rag_router',
-    'user_router'
+    'user_router',
+    'dashboard_router',
+    'agents_router',
+    'documents_router',
+    'metadata_router'
 ]
