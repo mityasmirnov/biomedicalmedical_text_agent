@@ -154,16 +154,26 @@ def run_server(
     """
     app = create_app(config)
     
-    uvicorn.run(
-        app,
-        host=host,
-        port=port,
-        reload=reload,
-        log_level="info"
-    )
+    if reload:
+        # For development with reload, use uvicorn.run with reload
+        uvicorn.run(
+            "app:create_app",
+            host=host,
+            port=port,
+            reload=reload,
+            log_level="info"
+        )
+    else:
+        # For production, use uvicorn.run without reload
+        uvicorn.run(
+            app,
+            host=host,
+            port=port,
+            log_level="info"
+        )
 
 
 if __name__ == "__main__":
     # Development server
-    run_server(reload=True)
+    run_server(reload=False)  # Disable reload for now to avoid issues
 

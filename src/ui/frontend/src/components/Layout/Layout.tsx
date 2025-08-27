@@ -104,6 +104,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       icon: <MonitoringIcon />,
       path: '/monitoring',
     },
+    {
+      text: 'Settings',
+      icon: <SettingsIcon />,
+      path: '/settings',
+    },
   ];
 
   const handleDrawerToggle = () => {

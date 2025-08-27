@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 
 // Components
@@ -14,6 +14,7 @@ import Agents from './pages/Agents/Agents';
 import Documents from './pages/Documents/Documents';
 import Validation from './pages/Validation/Validation';
 import Monitoring from './pages/Monitoring/Monitoring';
+import Settings from './pages/Settings/Settings';
 import Login from './pages/Auth/Login';
 
 // Contexts
@@ -156,6 +157,7 @@ const AppContent: React.FC = () => {
                     <Route path="/documents/*" element={<Documents />} />
                     <Route path="/validation/*" element={<Validation />} />
                     <Route path="/monitoring/*" element={<Monitoring />} />
+                    <Route path="/settings/*" element={<Settings />} />
                   </Routes>
                 </Layout>
               </WebSocketProvider>

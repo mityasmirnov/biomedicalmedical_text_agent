@@ -14,7 +14,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
-    "typescript": "^4.7.4",
+    "typescript": "^4.9.5",
     "web-vitals": "^2.1.4",
     "@mui/material": "^5.15.14",
     "@mui/icons-material": "^5.10.0",
@@ -25,7 +25,7 @@
     "react-router-dom": "^6.23.1",
     "axios": "^0.27.2",
     "recharts": "^2.10.3",
-    "react-query": "^3.39.2",
+    "@tanstack/react-query": "^4.36.1",
     "react-hook-form": "^7.34.0",
     "@hookform/resolvers": "^2.9.7",
     "yup": "^0.32.11",
@@ -47,8 +47,7 @@
     "@types/react-virtualized": "^9.21.21",
     "eslint": "^8.21.0",
     "eslint-config-react-app": "^7.0.1",
-    "prettier": "^2.7.1",
-    "typescript": "^5.5.4"
+    "prettier": "^2.7.1"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -77,6 +76,6 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:8000"
+  "proxy": "http://127.0.0.1:8000"
 }
 
