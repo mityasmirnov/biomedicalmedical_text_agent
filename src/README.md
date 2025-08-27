@@ -91,7 +91,6 @@ The system follows a **layered architecture** that mirrors the workflow of medic
 - **`frontend/`** - React-based web interface
 - **`config.py`** - Frontend configuration
 
-**Medical Use Case**: Like **medical dashboards** that present complex data in understandable formats
 
 ## 🧬 **Biological Data Flow**
 
@@ -100,35 +99,30 @@ The system follows a **layered architecture** that mirrors the workflow of medic
 PubMed/Europe PMC → Metadata Triage → Relevance Scoring → Document Classification
 ```
 
-**Biological Analogy**: Like **nutrient absorption** in the digestive system
 
 ### **2. Document Processing**
 ```
 PDF/Text → Text Extraction → Patient Segmentation → AI Analysis
 ```
 
-**Biological Analogy**: Like **cellular metabolism** breaking down complex molecules
 
 ### **3. Data Extraction**
 ```
 Raw Text → AI Agents → Structured Data → Ontology Mapping
 ```
 
-**Biological Analogy**: Like **protein synthesis** converting genetic information to functional molecules
 
 ### **4. Knowledge Storage**
 ```
 Extracted Data → Database Storage → Vector Indexing → Semantic Search
 ```
 
-**Biological Analogy**: Like **memory formation** in neural networks
 
 ### **5. Knowledge Retrieval**
 ```
 User Queries → Semantic Search → RAG Generation → Evidence-Based Answers
 ```
 
-**Biological Analogy**: Like **recall and reasoning** in cognitive processes
 
 ## 🔬 **Medical Research Applications**
 
