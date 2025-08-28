@@ -27,6 +27,7 @@ class DatabaseConfig(BaseSettings):
 class LLMConfig(BaseSettings):
     """Large Language Model configuration settings."""
     
+    provider: str = Field(default="openrouter", env="LLM_PROVIDER")
     openrouter_api_key: str = Field(default="", env="OPENROUTER_API_KEY")
     openrouter_api_base: str = Field(default="https://openrouter.ai/api/v1", env="OPENROUTER_API_BASE")
     openai_api_key: str = Field(default="", env="OPENAI_API_KEY")

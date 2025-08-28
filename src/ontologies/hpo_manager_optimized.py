@@ -25,7 +25,7 @@ class ProcessingResult:
 class OptimizedHPOManager:
     """Optimized HPO manager with caching and performance improvements."""
     
-    def __init__(self, hpo_data_path: str = "data/ontologies/hp.json"):
+    def __init__(self, hpo_data_path: str = "data/ontologies/hpo/hp.json"):
         """Initialize optimized HPO manager."""
         self.hpo_data_path = Path(hpo_data_path)
         self.hpo_terms = {}
@@ -58,7 +58,12 @@ class OptimizedHPOManager:
                                 if 'val' in syn:
                                     self.hpo_synonyms[syn['val'].lower()] = term_id
                 
-                logger.info(f"Loaded {len(self.hpo_terms)} HPO terms")
+                # Check if we successfully loaded any terms
+                if len(self.hpo_terms) > 0:
+                    logger.info(f"Loaded {len(self.hpo_terms)} HPO terms")
+                else:
+                    logger.warning("No HPO terms loaded from file, falling back to basic mappings")
+                    self._load_basic_mappings()
             else:
                 logger.warning(f"HPO data file not found: {self.hpo_data_path}")
                 # Fallback to basic mappings

@@ -713,9 +713,15 @@ async def get_visualizations(time_range: str = "7d") -> Dict[str, Any]:
 try:
     import sys
     import os
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from src.api.validation_endpoints import validation_router as real_validation_router, set_orchestrator
-    from src.core.unified_orchestrator import UnifiedOrchestrator
+    
+    # Add src to Python path
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    src_path = os.path.join(current_dir, "src")
+    if src_path not in sys.path:
+        sys.path.insert(0, src_path)
+    
+    from api.validation_endpoints import validation_router as real_validation_router, set_orchestrator
+    from core.unified_orchestrator import UnifiedOrchestrator
     
     # Initialize orchestrator with enhanced features
     orchestrator = UnifiedOrchestrator(use_enhanced_langextract=True)
@@ -1086,5 +1092,15 @@ def run_server(
         )
 
 if __name__ == "__main__":
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Biomedical Text Agent Standalone Server")
+    parser.add_argument("--host", default="127.0.0.1", help="Host to bind to (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=8000, help="Port to bind to (default: 8000)")
+    parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
+    
+    args = parser.parse_args()
+    
     # Development server
-    run_server(reload=False)
+    run_server(host=args.host, port=args.port, reload=args.reload)

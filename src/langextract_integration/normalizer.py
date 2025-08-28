@@ -13,8 +13,8 @@ from datetime import datetime
 
 # Remove circular import
 # from core.config import Config
-from ontologies.hpo_manager import HPOManager
-from ontologies.gene_manager import GeneManager
+from ..ontologies.hpo_manager import HPOManager
+from ..ontologies.gene_manager import GeneManager
 
 
 logger = logging.getLogger(__name__)

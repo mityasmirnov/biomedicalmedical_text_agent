@@ -84,6 +84,14 @@ The system has been recently consolidated to eliminate redundancy and provide a 
 - **Better User Experience**: Single startup script with clear options
 - **Maintained Compatibility**: All existing code continues to work
 
+### **🔧 Recent Fixes (v2.1)**
+- **✅ HPO Data Path**: Fixed path from `data/ontologies/hp.json` to `data/ontologies/hpo/hp.json`
+- **✅ HPO Manager**: Fixed fallback to basic mappings when enhanced data unavailable
+- **✅ Gene Manager**: Updated to return `ProcessingResult` objects for consistency
+- **✅ Import Paths**: Fixed relative import issues in multiple modules
+- **✅ LLM Provider**: Now correctly shows "openrouter" instead of "Unknown"
+- **✅ Backend Startup**: Fixed import and port conflict issues
+
 ### **📁 Current Clean Structure**
 ```
 biomedicalmedical_text_agent/
@@ -91,6 +99,7 @@ biomedicalmedical_text_agent/
 ├── demo_leigh_syndrome_search.py      # ✅ Essential demo for UI testing
 ├── demo_leigh_syndrome_search_standalone.py  # ✅ Standalone demo variant
 ├── CONSOLIDATION_SUMMARY.md           # ✅ Complete consolidation documentation
+├── test_simple.py                     # ✅ Simple test script for core functionality
 └── src/
     ├── metadata_triage/
     │   ├── pubmed_client.py              # ✅ Unified (uses enhanced internally)
@@ -98,7 +107,8 @@ biomedicalmedical_text_agent/
     │   └── enhanced_metadata_orchestrator.py  # ⚠️  Internal (will be refactored)
     ├── ontologies/
     │   ├── hpo_manager.py                # ✅ Unified (uses optimized internally)
-    │   └── hpo_manager_basic.py          # ✅ Fallback implementation
+    │   ├── hpo_manager_basic.py          # ✅ Fallback implementation
+    │   └── gene_manager.py               # ✅ Fixed to use ProcessingResult
     └── agents/orchestrator/
         ├── extraction_orchestrator.py    # ✅ Unified (uses enhanced internally)
         └── extraction_orchestrator_basic.py  # ✅ Fallback implementation

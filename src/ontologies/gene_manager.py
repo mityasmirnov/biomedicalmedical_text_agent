@@ -6,11 +6,11 @@ import json
 import re
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Any, Union
+from dataclasses import dataclass
 
-# Remove circular imports
-# from core.base import ProcessingResult
-# from core.logging_config import get_logger
+# Import ProcessingResult for consistent return types
+from core.base import ProcessingResult
 
 log = logging.getLogger(__name__)
 
@@ -249,7 +249,7 @@ class GeneManager:
         except Exception as e:
             log.error(f"Error saving gene data: {str(e)}")
     
-    def normalize_gene_symbol(self, gene_symbol: str) -> Dict[str, any]:
+    def normalize_gene_symbol(self, gene_symbol: str) -> ProcessingResult:
         """
         Normalize a gene symbol to official HGNC symbol.
         
@@ -261,11 +261,17 @@ class GeneManager:
         """
         try:
             if not gene_symbol or not gene_symbol.strip():
-                return {
-                    "original_symbol": gene_symbol,
-                    "normalized_symbol": None,
-                    "match_type": None
-                }
+                return ProcessingResult(
+                    success=False,
+                    data={
+                        "original_symbol": gene_symbol,
+                        "normalized_symbol": None,
+                        "match_type": None,
+                        "confidence": 0.0,
+                        "gene_info": None
+                    },
+                    error="Empty or invalid gene symbol"
+                )
             
             symbol = gene_symbol.strip()
             original_symbol = symbol
@@ -311,20 +317,22 @@ class GeneManager:
                     confidence = fuzzy_result["confidence"]
                 else:
                     # No match found
-                    result = {
-                        "original_symbol": original_symbol,
-                        "normalized_symbol": None,
-                        "match_type": None,
-                        "confidence": 0.0,
-                        "gene_info": None
-                    }
-                    
-                    return result
+                    return ProcessingResult(
+                        success=False,
+                        data={
+                            "original_symbol": original_symbol,
+                            "normalized_symbol": None,
+                            "match_type": None,
+                            "confidence": 0.0,
+                            "gene_info": None
+                        },
+                        error="No gene match found"
+                    )
             
             # Get gene information
             gene_info = self.genes.get(normalized, {})
             
-            result = {
+            result_data = {
                 "original_symbol": original_symbol,
                 "normalized_symbol": normalized,
                 "match_type": match_type,
@@ -332,17 +340,24 @@ class GeneManager:
                 "gene_info": gene_info
             }
             
-            return result
+            return ProcessingResult(
+                success=True,
+                data=result_data
+            )
             
         except Exception as e:
             log.error(f"Error normalizing gene symbol '{gene_symbol}': {str(e)}")
-            return {
-                "original_symbol": gene_symbol,
-                "normalized_symbol": None,
-                "match_type": None,
-                "confidence": 0.0,
-                "gene_info": None
-            }
+            return ProcessingResult(
+                success=False,
+                data={
+                    "original_symbol": gene_symbol,
+                    "normalized_symbol": None,
+                    "match_type": None,
+                    "confidence": 0.0,
+                    "gene_info": None
+                },
+                error=str(e)
+            )
     
     def _fuzzy_match_gene(self, symbol: str) -> Optional[Dict[str, any]]:
         """Perform fuzzy matching for gene symbols."""
@@ -437,13 +452,13 @@ class GeneManager:
             
             for gene_symbol in gene_list:
                 result = self.normalize_gene_symbol(gene_symbol)
-                if result["normalized_symbol"] is not None:
-                    results.append(result)
+                if result.success:
+                    results.append(result.data)
                 else:
                     results.append({
                         "original_symbol": gene_symbol,
                         "normalized_symbol": None,
-                        "error": result["error"]
+                        "error": result.error
                     })
             
             return results

@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Comprehensive test script for the Biomedical Data Extraction Engine.
-
-This script can be run from the project root directory to test all system functionality.
+Comprehensive system test for the Biomedical Data Extraction Engine.
 """
 
-import asyncio
 import sys
-import json
-import pandas as pd
+import os
 from pathlib import Path
-from typing import Dict, List, Any
-import time
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add src to Python path for imports
+current_dir = Path(__file__).parent
+src_path = current_dir / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
 def test_imports():
     """Test if all required modules can be imported."""
@@ -287,31 +284,38 @@ def test_api_endpoints():
     print("\nTesting API endpoints...")
     
     try:
-        from api.main import create_api_router
-        
-        router = create_api_router()
-        print("API router created")
-        
-        # Check if key endpoints are available
-        routes = [route.path for route in router.routes]
-        print(f"   Available routes: {len(routes)}")
-        
-        # Check for key endpoint categories
-        health_routes = [r for r in routes if 'health' in r]
-        extraction_routes = [r for r in routes if 'extraction' in r]
-        database_routes = [r for r in routes if 'database' in r]
-        rag_routes = [r for r in routes if 'rag' in r]
-        
-        if health_routes:
-            print("Health endpoints available")
-        if extraction_routes:
-            print("Extraction endpoints available")
-        if database_routes:
-            print("Database endpoints available")
-        if rag_routes:
-            print("RAG endpoints available")
-        
-        return True
+        # Try to import the API router
+        try:
+            from api.main import create_api_router
+            router = create_api_router()
+            print("API router created")
+            
+            # Check if key endpoints are available
+            routes = [route.path for route in router.routes]
+            print(f"   Available routes: {len(routes)}")
+            
+            # Check for key endpoint categories
+            health_routes = [r for r in routes if 'health' in r]
+            extraction_routes = [r for r in routes if 'extraction' in r]
+            database_routes = [r for r in routes if 'database' in r]
+            rag_routes = [r for r in routes if 'rag' in r]
+            
+            if health_routes:
+                print("Health endpoints available")
+            if extraction_routes:
+                print("Extraction endpoints available")
+            if database_routes:
+                print("Database endpoints available")
+            if rag_routes:
+                print("RAG endpoints available")
+            
+            return True
+            
+        except ImportError as e:
+            print(f"API import failed: {e}")
+            print("   This is expected if running outside the full application context")
+            return False
+            
     except Exception as e:
         print(f"API test failed: {e}")
         return False
