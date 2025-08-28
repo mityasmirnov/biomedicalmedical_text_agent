@@ -131,7 +131,7 @@ const PromptManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [isAddPromptDialogOpen, setIsAddPromptDialogOpen] = useState(false);
   const [isEditPromptDialogOpen, setIsEditPromptDialogOpen] = useState(false);
-  const [isViewPromptDialogOpen, setIsViewPromptDialogOpen(false);
+  const [isViewPromptDialogOpen, setIsViewPromptDialogOpen] = useState(false);
   const [isTestPromptDialogOpen, setIsTestPromptDialogOpen] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
   const [isLoading, setIsLoading] = useState(false);

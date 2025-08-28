@@ -24,16 +24,7 @@ from .simple_endpoints import (
     auth_router
 )
 
-# Import enhanced endpoints
-from .enhanced_endpoints import (
-    enhanced_documents_router,
-    enhanced_extraction_router,
-    enhanced_search_router,
-    enhanced_analytics_router,
-    enhanced_health_router
-)
-
-# Import enhanced endpoints
+# Import enhanced endpoints from the single file
 from .enhanced_endpoints import (
     enhanced_documents_router,
     enhanced_extraction_router,

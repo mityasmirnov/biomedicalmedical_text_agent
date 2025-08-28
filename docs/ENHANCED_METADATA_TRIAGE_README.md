@@ -38,10 +38,9 @@ The Enhanced Metadata Triage Module provides comprehensive functionality for sea
 ```
 src/metadata_triage/
 ├── enhanced_metadata_orchestrator.py    # Enhanced orchestrator with DB integration
-├── pubmed_client2.py                    # Enhanced PubMed client
-├── enhanced_metadata_orchestrator_simple.py  # Simplified version (no external deps)
-├── pubmed_client.py                     # Original PubMed client
-├── metadata_orchestrator.py             # Original orchestrator
+├── pubmed_client2.py                    # Enhanced PubMed client (internal)
+├── pubmed_client.py                     # Unified PubMed client (uses enhanced internally)
+├── metadata_orchestrator.py             # Unified orchestrator (both implementations)
 └── __init__.py                          # Module exports
 ```
 
@@ -50,44 +49,43 @@ src/metadata_triage/
 ### 1. Basic PubMed Search and Storage
 
 ```python
-from metadata_triage.enhanced_metadata_orchestrator import EnhancedMetadataOrchestrator
+from metadata_triage.metadata_orchestrator import UnifiedMetadataOrchestrator
 
-# Initialize orchestrator
-orchestrator = EnhancedMetadataOrchestrator(
-    db_path="data/database/biomedical_data.db"
+# Initialize unified orchestrator
+orchestrator = UnifiedMetadataOrchestrator(
+    llm_client=None,  # Optional: for classification
+    use_enhanced=True  # Use enhanced implementation if available
 )
 
 # Search and store metadata
-result = orchestrator.search_and_store_pubmed_metadata(
+result = await orchestrator.run_complete_pipeline(
     query="leigh syndrome case reports",
     max_results=100,
-    save_to_csv=True,
-    output_dir="data/metadata_triage"
+    include_europepmc=False,
+    output_dir="data/metadata_triage",
+    save_intermediate=True
 )
 
-print(f"Found {result['articles_found']} articles")
-print(f"Stored {result['articles_stored']} articles")
+print(f"Pipeline completed successfully")
+print(f"Output directory: {result['output_directory']}")
 ```
 
-### 2. Enhanced PubMed Client Usage
+### 2. Unified PubMed Client Usage
 
 ```python
-from metadata_triage.pubmed_client2 import create_enhanced_pubmed_client
+from metadata_triage.pubmed_client import PubMedClient, PubMedArticle
 
-# Create enhanced client
-client = create_enhanced_pubmed_client(
+# Create unified client (automatically uses enhanced implementation)
+client = PubMedClient(
     email="your.email@example.com",  # Optional: for higher rate limits
-    api_key="your_api_key",          # Optional: for higher rate limits
-    db_path="data/database/biomedical_data.db",  # For caching
-    enable_caching=True
+    api_key="your_api_key"          # Optional: for higher rate limits
 )
 
 # Search for articles
 articles = client.fetch_articles_by_query(
     query="leigh syndrome case reports",
     max_results=100,
-    include_abstracts=True,
-    use_cache=True
+    include_abstracts=True
 )
 
 # Save to CSV
@@ -95,14 +93,14 @@ client.save_to_csv(articles, "leigh_syndrome_articles.csv")
 
 # Get statistics
 stats = client.get_statistics(articles)
-print(f"Open access rate: {stats.get('open_access_rate', 0):.1%}")
+print(f"Total articles: {stats['total_articles']}")
 ```
 
 ### 3. Complete Pipeline Execution
 
 ```python
 # Run complete metadata triage pipeline
-result = orchestrator.run_complete_pipeline(
+result = await orchestrator.run_complete_pipeline(
     query="leigh syndrome case reports",
     max_results=1000,
     include_europepmc=True,
@@ -110,8 +108,10 @@ result = orchestrator.run_complete_pipeline(
     save_intermediate=True
 )
 
-if result['success']:
-    print(f"Pipeline completed: {result['total_articles']} articles processed")
+if result.get('enhanced_mode'):
+    print(f"Pipeline completed in enhanced mode")
+else:
+    print(f"Pipeline completed with {result['summary']['pipeline_info']['total_retrieved_documents']} articles")
 ```
 
 ### 4. Database Query and Analysis

@@ -129,7 +129,7 @@ const APIManager: React.FC = () => {
   const [isAddModelDialogOpen, setIsAddModelDialogOpen] = useState(false);
   const [isAddKeyDialogOpen, setIsAddKeyDialogOpen] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<APIProvider | null>(null);
-  const [selectedModel, setSelectedProvider] = useState<APIModel | null>(null);
+  const [selectedModel, setSelectedModel] = useState<APIModel | null>(null);
   const [selectedKey, setSelectedKey] = useState<APIKey | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showApiKeys, setShowApiKeys] = useState<{ [key: string]: boolean }>({});

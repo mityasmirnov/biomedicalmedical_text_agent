@@ -11,8 +11,6 @@ This module provides document retrieval and classification:
 - Enhanced metadata orchestrator with database storage
 """
 
-from .metadata_orchestrator import MetadataOrchestrator
-from .enhanced_metadata_orchestrator import EnhancedMetadataOrchestrator
 from .pubmed_client import PubMedClient
 from .pubmed_client2 import EnhancedPubMedClient, EnhancedPubMedArticle
 from .europepmc_client import EuropePMCClient
@@ -21,8 +19,6 @@ from .concept_scorer import ConceptDensityScorer
 from .deduplicator import DocumentDeduplicator
 
 __all__ = [
-    'MetadataOrchestrator',
-    'EnhancedMetadataOrchestrator',
     'PubMedClient',
     'EnhancedPubMedClient',
     'EnhancedPubMedArticle',

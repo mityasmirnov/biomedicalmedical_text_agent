@@ -60,12 +60,13 @@ import {
   Stop as StopIcon,
   Visibility as ViewIcon,
   Settings as SettingsIcon,
-  Database as DatabaseIcon,
+  Storage as DatabaseIcon,
   Schema as SchemaIcon,
   QueryStats as QueryStatsIcon,
   History as HistoryIcon,
   Save as SaveIcon,
   ContentCopy as CopyIcon,
+  Close as CloseIcon,
   Check as CheckIcon,
   Error as ErrorIcon,
   Warning as WarningIcon,
@@ -726,7 +727,7 @@ const Database: React.FC = () => {
                     </Button>
                     <Button
                       variant="outlined"
-                      startIcon={<ContentCopyIcon />}
+                      startIcon={<CopyIcon />}
                       onClick={() => navigator.clipboard.writeText(sqlQuery)}
                       disabled={!sqlQuery.trim()}
                     >

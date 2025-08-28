@@ -522,7 +522,7 @@ def main():
         print(f"  - Pipeline output: {pipeline_result['output_directory']}")
         
         print(f"\n🔍 You can now search for Leigh syndrome case reports using:")
-        print(f"  python src/metadata_triage/enhanced_metadata_orchestrator_simple.py 'leigh syndrome case reports'")
+        print(f"  python demo_leigh_syndrome_search.py")
         
     else:
         print(f"✗ Search failed: {result.get('error', 'Unknown error')}")

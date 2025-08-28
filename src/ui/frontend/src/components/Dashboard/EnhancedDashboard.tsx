@@ -427,7 +427,7 @@ const EnhancedDashboard: React.FC = () => {
                     dataKey="count"
                   >
                     {extractionStats.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={theme.palette.primary[`${(index + 1) * 100}` as any] || theme.palette.primary.main} />
+                                              <Cell key={`cell-${index}`} fill={theme.palette.primary.main} />
                     ))}
                   </Pie>
                   <RechartsTooltip />

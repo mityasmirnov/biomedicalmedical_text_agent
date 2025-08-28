@@ -63,48 +63,79 @@ The Biomedical Text Agent is designed to bridge the gap between **published medi
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+## 🔄 **Recent Consolidation (v2.0)**
+
+The system has been recently consolidated to eliminate redundancy and provide a cleaner, more maintainable codebase:
+
+### **✅ What Was Consolidated**
+- **PubMed Client**: Unified with enhanced implementation internally
+- **HPO Manager**: Unified with optimized implementation internally  
+- **Extraction Orchestrator**: Unified with enhanced implementation internally
+- **Metadata Orchestrator**: Unified with both implementations available
+- **Startup Scripts**: Single `start_system.py` replaces multiple startup files
+- **Package Files**: Consolidated frontend dependencies into single `package.json`
+- **UI Components**: Enhanced React components with Material-UI integration
+
+### **🎯 Benefits of Consolidation**
+- **Single Source of Truth**: No more confusion about which implementation to use
+- **Automatic Enhancement**: Users get enhanced features when available
+- **Graceful Fallbacks**: Basic implementations available when enhanced versions unavailable
+- **Cleaner Project Structure**: Eliminated redundant files and scripts
+- **Better User Experience**: Single startup script with clear options
+- **Maintained Compatibility**: All existing code continues to work
+
+### **📁 Current Clean Structure**
+```
+biomedicalmedical_text_agent/
+├── start_system.py                    # ✅ Single unified startup script
+├── demo_leigh_syndrome_search.py      # ✅ Essential demo for UI testing
+├── demo_leigh_syndrome_search_standalone.py  # ✅ Standalone demo variant
+├── CONSOLIDATION_SUMMARY.md           # ✅ Complete consolidation documentation
+└── src/
+    ├── metadata_triage/
+    │   ├── pubmed_client.py              # ✅ Unified (uses enhanced internally)
+    │   ├── metadata_orchestrator.py      # ✅ Unified (both implementations)
+    │   └── enhanced_metadata_orchestrator.py  # ⚠️  Internal (will be refactored)
+    ├── ontologies/
+    │   ├── hpo_manager.py                # ✅ Unified (uses optimized internally)
+    │   └── hpo_manager_basic.py          # ✅ Fallback implementation
+    └── agents/orchestrator/
+        ├── extraction_orchestrator.py    # ✅ Unified (uses enhanced internally)
+        └── extraction_orchestrator_basic.py  # ✅ Fallback implementation
+```
+
 ## 🚀 **Quick Start**
 
-### **1. Start the Enhanced System**
+### **1. Start the Unified System**
 ```bash
 # Activate virtual environment
 source venv/bin/activate
 
-# Start enhanced system demonstration
-python start_enhanced_system.py demo
+# Start the complete system
+python start_system.py
 
-# Start enhanced system server
-python start_enhanced_system.py server
+# Check system requirements
+python start_system.py check
 
-# Start unified system (legacy)
-python start_unified_system.py
-
-# Start standalone server
-python standalone_server.py
+# Build frontend (if needed)
+python start_system.py build
 ```
 
 ### **2. Access the System**
-- **🌐 Enhanced Frontend**: http://127.0.0.0:8001/ (when using enhanced server)
-- **🌐 Legacy Frontend**: http://127.0.0.1:8000/ (when using unified system)
+- **🌐 Frontend**: http://127.0.0.1:8000/
 - **📚 API Docs**: http://127.0.0.1:8000/api/docs
 - **💚 Health Check**: http://127.0.0.1:8000/api/health
 
 ### **3. Test the System**
 ```bash
-# Run enhanced system demonstration
-python start_enhanced_system.py demo
-
-# Run comprehensive system test
-python test_system.py
-
-# Test enhanced metadata triage
-python test_enhanced_metadata_triage.py
-
-# Test standalone metadata triage
-python test_standalone_metadata_triage.py
-
-# Run Leigh syndrome search demo
+# Run Leigh syndrome demo
 python demo_leigh_syndrome_search.py
+
+# Run standalone demo
+python demo_leigh_syndrome_search_standalone.py
+
+# Test system components
+python test_system.py
 ```
 
 ## 🔬 **Biological & Medical Applications**

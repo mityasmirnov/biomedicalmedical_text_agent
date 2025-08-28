@@ -42,12 +42,12 @@ import {
   InputAdornment,
   CircularProgress,
   Snackbar,
-  TreeView,
-  TreeItem,
+  // TreeView and TreeItem are imported separately
   Autocomplete,
   Checkbox,
   FormGroup,
 } from '@mui/material';
+import { TreeView, TreeItem } from '@mui/x-tree-view';
 import {
   School as SchoolIcon,
   Search as SearchIcon,
@@ -72,7 +72,7 @@ import {
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   Link as LinkIcon,
-  Unlink as UnlinkIcon,
+  LinkOff as UnlinkIcon,
   Schema as SchemaIcon,
   DataObject as DataObjectIcon,
 } from '@mui/icons-material';

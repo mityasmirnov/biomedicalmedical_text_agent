@@ -70,7 +70,7 @@ import {
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   Link as LinkIcon,
-  Unlink as UnlinkIcon,
+  LinkOff as UnlinkIcon,
   Schema as SchemaIcon,
   DataObject as DataObjectIcon,
   CloudUpload as CloudUploadIcon,
@@ -147,7 +147,7 @@ const DocumentManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isEditDocumentDialogOpen, setIsEditDocumentDialogOpen] = useState(false);
-  const [isViewDocumentDialogOpen, setIsViewDocumentDialogOpen(false);
+  const [isViewDocumentDialogOpen, setIsViewDocumentDialogOpen] = useState(false);
   const [isProcessingDialogOpen, setIsProcessingDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isLoading, setIsLoading] = useState(false);
