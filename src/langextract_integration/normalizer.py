@@ -13,8 +13,9 @@ from datetime import datetime
 
 # Remove circular import
 # from core.config import Config
-from ..ontologies.hpo_manager import HPOManager
-from ..ontologies.gene_manager import GeneManager
+# Import ontology managers lazily to avoid circular imports
+# from ..ontologies.hpo_manager import HPOManager
+# from ..ontologies.gene_manager import GeneManager
 
 
 logger = logging.getLogger(__name__)
@@ -40,8 +41,17 @@ class BiomedicNormalizer:
         """
         self.config = config
         
-        # Initialize ontology managers
+        # Initialize ontology managers lazily to avoid circular imports
+        self.hpo_manager = None
+        self.gene_manager = None
+        
+        # Try to initialize ontology managers
+        self._init_ontology_managers()
+    
+    def _init_ontology_managers(self):
+        """Initialize ontology managers lazily."""
         try:
+            from ontologies.hpo_manager import HPOManager
             self.hpo_manager = HPOManager()
             logger.info("HPO manager initialized")
         except Exception as e:
@@ -49,6 +59,7 @@ class BiomedicNormalizer:
             self.hpo_manager = None
         
         try:
+            from ontologies.gene_manager import GeneManager
             self.gene_manager = GeneManager()
             logger.info("Gene manager initialized")
         except Exception as e:
