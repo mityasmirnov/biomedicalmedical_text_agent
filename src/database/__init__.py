@@ -9,9 +9,11 @@ This module provides database functionality:
 """
 
 from .sqlite_manager import SQLiteManager
+from .enhanced_sqlite_manager import EnhancedSQLiteManager
 from .vector_manager import VectorManager
 
 __all__ = [
     'SQLiteManager',
+    'EnhancedSQLiteManager',
     'VectorManager'
 ]
