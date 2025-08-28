@@ -415,3 +415,26 @@ docker-compose.override.yml
 # Performance data
 *.perf
 *.trace
+
+# =============================================================================
+# Additional Project-Specific Ignores
+# =============================================================================
+
+# Generated RAG assets and databases
+data/rag/*.db
+data/rag/vectors/**
+
+# Ontology cache artifacts
+data/ontologies/hpo_cache/*.db
+data/ontologies/hpo_cache/*.pkl
+
+# Metadata triage generated files
+data/metadata_triage/**/*.json
+data/metadata_triage/**/*.csv
+
+# Aggregated outputs and logs
+data/output/**
+logs/**
+
+# Notebook exports
+notebooks/output/**
