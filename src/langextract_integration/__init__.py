@@ -6,6 +6,7 @@ This module provides the primary extraction engine:
 - Data normalization
 - Schema management
 - Visualization tools
+- Enhanced UI support with validation interface
 """
 
 from .extractor import LangExtractEngine
@@ -19,6 +20,19 @@ from .schema_classes import (
 )
 from .visualizer import ExtractionVisualizer
 
+# Import enhanced functionality if available
+try:
+    from .enhanced_langextract_integration import (
+        EnhancedLangExtractEngine,
+        TextHighlighter,
+        ValidationInterface,
+        ExtractionSpan,
+        ValidationData
+    )
+    ENHANCED_AVAILABLE = True
+except ImportError:
+    ENHANCED_AVAILABLE = False
+
 __all__ = [
     'LangExtractEngine',
     'BiomedicNormalizer',
@@ -29,4 +43,14 @@ __all__ = [
     'BiomedicExtractionClasses',
     'ExtractionVisualizer'
 ]
+
+# Add enhanced exports if available
+if ENHANCED_AVAILABLE:
+    __all__.extend([
+        'EnhancedLangExtractEngine',
+        'TextHighlighter',
+        'ValidationInterface',
+        'ExtractionSpan',
+        'ValidationData'
+    ])
 

@@ -23,6 +23,12 @@ from database.vector_manager import VectorManager
 from core.llm_client.openrouter_client import OpenRouterClient
 from core.config import Config
 
+# Try to import enhanced LangExtract
+try:
+    from langextract_integration import EnhancedLangExtractEngine, ENHANCED_AVAILABLE
+except ImportError:
+    ENHANCED_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 class UnifiedOrchestrator:
@@ -33,17 +39,20 @@ class UnifiedOrchestrator:
     for document processing, extraction, storage, and retrieval.
     """
     
-    def __init__(self, config: Optional[Config] = None):
+    def __init__(self, config: Optional[Config] = None, use_enhanced_langextract: bool = True):
         """
         Initialize the unified orchestrator.
         
         Args:
             config: System configuration
+            use_enhanced_langextract: Whether to use enhanced LangExtract with UI features
         """
         self.config = config or Config()
+        self.use_enhanced_langextract = use_enhanced_langextract and ENHANCED_AVAILABLE
         self.llm_client = None
         self.metadata_orchestrator = None
         self.extraction_engine = None
+        self.enhanced_extraction_engine = None
         self.sqlite_manager = None
         self.vector_manager = None
         self.rag_system = None
@@ -64,14 +73,23 @@ class UnifiedOrchestrator:
             )
             logger.info("Metadata orchestrator initialized")
             
+            # Initialize database managers first (needed by enhanced engine)
+            self.sqlite_manager = SQLiteManager()
+            self.vector_manager = VectorManager()
+            logger.info("Database managers initialized")
+            
             # Initialize extraction engine
             self.extraction_engine = LangExtractEngine(config=self.config)
             logger.info("LangExtract engine initialized")
             
-            # Initialize database managers
-            self.sqlite_manager = SQLiteManager()
-            self.vector_manager = VectorManager()
-            logger.info("Database managers initialized")
+            # Initialize enhanced extraction engine if available and requested
+            if self.use_enhanced_langextract:
+                self.enhanced_extraction_engine = EnhancedLangExtractEngine(
+                    base_engine=self.extraction_engine,
+                    db_manager=self.sqlite_manager,
+                    model_id=self.config.llm.models.primary if hasattr(self.config, 'llm') else "google/gemma-2-27b-it:free"
+                )
+                logger.info("Enhanced LangExtract engine initialized with UI support")
             
             # Initialize RAG system (optional to avoid circular imports)
             try:
@@ -146,11 +164,27 @@ class UnifiedOrchestrator:
                     else:
                         continue
                     
-                    # Run extraction
-                    extraction_result = self.extraction_engine.extract_from_text(
-                        text=text_content,
-                        extraction_passes=extraction_passes
-                    )
+                    # Run extraction (use enhanced version if available)
+                    if self.enhanced_extraction_engine:
+                        # Use enhanced extraction with UI support
+                        extraction_result = await self.enhanced_extraction_engine.extract_with_ui_support(
+                            text=text_content,
+                            document_id=doc.get("pmid") or doc.get("id"),
+                            metadata_id=doc.get("metadata_id"),
+                            fulltext_id=doc.get("fulltext_id")
+                        )
+                        # Convert to compatible format
+                        extraction_result = {
+                            "success": True,
+                            "extractions": extraction_result.get("extractions", {}),
+                            "enhanced_data": extraction_result  # Keep enhanced data
+                        }
+                    else:
+                        # Use standard extraction
+                        extraction_result = self.extraction_engine.extract_from_text(
+                            text=text_content,
+                            extraction_passes=extraction_passes
+                        )
                     
                     if extraction_result and extraction_result.get("success"):
                         # Store extracted data
@@ -287,6 +321,7 @@ class UnifiedOrchestrator:
                     "llm_client": "initialized" if self.llm_client else "not_initialized",
                     "metadata_orchestrator": "initialized" if self.metadata_orchestrator else "not_initialized",
                     "extraction_engine": "initialized" if self.extraction_engine else "not_initialized",
+                    "enhanced_extraction_engine": "initialized" if self.enhanced_extraction_engine else "not_initialized",
                     "sqlite_manager": "initialized" if self.sqlite_manager else "not_initialized",
                     "vector_manager": "initialized" if self.vector_manager else "not_initialized",
                     "rag_system": "initialized" if self.rag_system else "not_initialized"
@@ -305,3 +340,77 @@ class UnifiedOrchestrator:
                 "error": str(e),
                 "timestamp": datetime.now().isoformat()
             }
+    
+    async def extract_document_with_validation(
+        self, 
+        text: str, 
+        document_id: str,
+        metadata_id: Optional[str] = None,
+        fulltext_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Extract information from document with validation interface support.
+        
+        Args:
+            text: Document text to extract from
+            document_id: Unique document identifier
+            metadata_id: Optional metadata record ID
+            fulltext_id: Optional full-text record ID
+            
+        Returns:
+            Enhanced extraction results with validation data
+        """
+        if not self.enhanced_extraction_engine:
+            return {
+                "error": "Enhanced extraction not available. Install required dependencies."
+            }
+        
+        try:
+            result = await self.enhanced_extraction_engine.extract_with_ui_support(
+                text=text,
+                document_id=document_id,
+                metadata_id=metadata_id,
+                fulltext_id=fulltext_id
+            )
+            
+            logger.info(f"Enhanced extraction completed for document {document_id}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Enhanced extraction failed: {e}")
+            return {
+                "error": f"Extraction failed: {str(e)}"
+            }
+    
+    async def get_validation_queue(self, status: str = "pending") -> List[Dict]:
+        """Get extraction validation queue."""
+        if not self.enhanced_extraction_engine:
+            return []
+        
+        try:
+            return await self.enhanced_extraction_engine.validation_interface.get_validation_queue(status)
+        except Exception as e:
+            logger.error(f"Failed to get validation queue: {e}")
+            return []
+    
+    async def submit_validation(
+        self, 
+        extraction_id: str, 
+        validation_status: str,
+        corrections: Optional[Dict] = None,
+        validator_notes: Optional[str] = None
+    ) -> bool:
+        """Submit validation results for an extraction."""
+        if not self.enhanced_extraction_engine:
+            return False
+        
+        try:
+            return await self.enhanced_extraction_engine.validation_interface.submit_validation(
+                extraction_id=extraction_id,
+                validation_status=validation_status,
+                corrections=corrections,
+                validator_notes=validator_notes
+            )
+        except Exception as e:
+            logger.error(f"Failed to submit validation: {e}")
+            return False

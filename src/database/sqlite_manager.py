@@ -631,4 +631,231 @@ class SQLiteManager:
                 success=False,
                 error=f"Export failed: {str(e)}"
             )
+    
+    # Validation interface methods for enhanced LangExtract
+    async def store_validation_data(self, validation_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Store validation data for extraction results."""
+        try:
+            # Create validation table if it doesn't exist
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS validation_data (
+                        id TEXT PRIMARY KEY,
+                        extraction_id TEXT UNIQUE,
+                        original_text TEXT,
+                        highlighted_text TEXT,
+                        extractions TEXT,
+                        spans TEXT,
+                        confidence_scores TEXT,
+                        validation_status TEXT DEFAULT 'pending',
+                        validator_notes TEXT,
+                        corrections TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        validated_at TIMESTAMP
+                    )
+                """)
+                
+                # Insert validation data
+                import uuid
+                validation_id = str(uuid.uuid4())
+                
+                cursor.execute("""
+                    INSERT INTO validation_data (
+                        id, extraction_id, original_text, highlighted_text,
+                        extractions, spans, confidence_scores, validation_status,
+                        validator_notes, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    validation_id,
+                    validation_data['extraction_id'],
+                    validation_data['original_text'],
+                    validation_data['highlighted_text'],
+                    validation_data['extractions'],
+                    validation_data['spans'],
+                    validation_data['confidence_scores'],
+                    validation_data['validation_status'],
+                    validation_data.get('validator_notes'),
+                    validation_data['created_at']
+                ))
+                
+                conn.commit()
+                return {'id': validation_id, 'extraction_id': validation_data['extraction_id']}
+                
+        except Exception as e:
+            log.error(f"Failed to store validation data: {e}")
+            raise
+    
+    async def update_validation_data(self, extraction_id: str, update_data: Dict[str, Any]) -> bool:
+        """Update validation data with corrections and status."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Build update query dynamically
+                update_fields = []
+                values = []
+                
+                for field, value in update_data.items():
+                    update_fields.append(f"{field} = ?")
+                    values.append(value)
+                
+                values.append(extraction_id)
+                
+                query = f"""
+                    UPDATE validation_data 
+                    SET {', '.join(update_fields)}
+                    WHERE extraction_id = ?
+                """
+                
+                cursor.execute(query, values)
+                conn.commit()
+                
+                return cursor.rowcount > 0
+                
+        except Exception as e:
+            log.error(f"Failed to update validation data: {e}")
+            raise
+    
+    async def get_validation_queue(self, status: str = "pending") -> List[Dict[str, Any]]:
+        """Get validation queue filtered by status."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    SELECT * FROM validation_data
+                    WHERE validation_status = ?
+                    ORDER BY created_at ASC
+                """, (status,))
+                
+                columns = [description[0] for description in cursor.description]
+                results = []
+                
+                for row in cursor.fetchall():
+                    results.append(dict(zip(columns, row)))
+                
+                return results
+                
+        except Exception as e:
+            log.error(f"Failed to get validation queue: {e}")
+            return []
+    
+    async def store_extraction_with_linking(self, extraction_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Store extraction with complete linking to documents and validation."""
+        try:
+            # Create extraction_linking table if needed
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS extraction_linking (
+                        id TEXT PRIMARY KEY,
+                        document_id TEXT,
+                        metadata_id TEXT,
+                        fulltext_id TEXT,
+                        validation_id TEXT,
+                        model_id TEXT,
+                        extraction_data TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (document_id) REFERENCES documents (id)
+                    )
+                """)
+                
+                # Insert extraction with linking
+                import uuid
+                extraction_id = str(uuid.uuid4())
+                
+                cursor.execute("""
+                    INSERT INTO extraction_linking (
+                        id, document_id, metadata_id, fulltext_id,
+                        validation_id, model_id, extraction_data, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    extraction_id,
+                    extraction_data['document_id'],
+                    extraction_data.get('metadata_id'),
+                    extraction_data.get('fulltext_id'),
+                    extraction_data.get('validation_id'),
+                    extraction_data['model_id'],
+                    extraction_data['extraction_data'],
+                    extraction_data['created_at']
+                ))
+                
+                conn.commit()
+                return {'id': extraction_id}
+                
+        except Exception as e:
+            log.error(f"Failed to store extraction with linking: {e}")
+            raise
+    
+    async def get_extraction_with_validation(self, extraction_id: str) -> Optional[Dict[str, Any]]:
+        """Get extraction data with validation information."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    SELECT el.*, vd.validation_status, vd.validator_notes, vd.corrections
+                    FROM extraction_linking el
+                    LEFT JOIN validation_data vd ON vd.extraction_id = el.id
+                    WHERE el.id = ?
+                """, (extraction_id,))
+                
+                row = cursor.fetchone()
+                if row:
+                    columns = [description[0] for description in cursor.description]
+                    return dict(zip(columns, row))
+                
+                return None
+                
+        except Exception as e:
+            log.error(f"Failed to get extraction with validation: {e}")
+            return None
+    
+    async def get_extraction_data(self, extraction_id: str) -> Optional[Dict[str, Any]]:
+        """Get extraction data by ID."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    SELECT * FROM extraction_linking
+                    WHERE id = ?
+                """, (extraction_id,))
+                
+                row = cursor.fetchone()
+                if row:
+                    columns = [description[0] for description in cursor.description]
+                    result = dict(zip(columns, row))
+                    # Parse extraction_data JSON
+                    if result.get('extraction_data'):
+                        result['extraction_data'] = json.loads(result['extraction_data'])
+                    return result
+                
+                return None
+                
+        except Exception as e:
+            log.error(f"Failed to get extraction data: {e}")
+            return None
+    
+    async def update_extraction_data(self, extraction_id: str, updated_data: Dict[str, Any]) -> bool:
+        """Update extraction data with corrections."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    UPDATE extraction_linking
+                    SET extraction_data = ?
+                    WHERE id = ?
+                """, (json.dumps(updated_data), extraction_id))
+                
+                conn.commit()
+                return cursor.rowcount > 0
+                
+        except Exception as e:
+            log.error(f"Failed to update extraction data: {e}")
+            raise
 
