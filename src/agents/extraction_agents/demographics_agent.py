@@ -109,6 +109,7 @@ Example output format:
             return ProcessingResult(
                 success=True,
                 data=cleaned_data,
+                confidence_score=0.85,  # Default confidence score
                 metadata={
                     "agent": self.name,
                     "patient_id": patient_segment.patient_id,

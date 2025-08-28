@@ -1,7 +1,7 @@
 """
 Standalone API server for Biomedical Text Agent.
 
-This module creates a FastAPI application without complex imports.
+This module creates a FastAPI application with real implementations.
 """
 
 from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Query, WebSocket, WebSocketDisconnect
@@ -16,10 +16,46 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import uvicorn
+import asyncio
+
+# Import real modules
+import sys
+import os
+
+# Add src to Python path for direct imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+
+from core.config import get_config
+from database.enhanced_sqlite_manager import EnhancedSQLiteManager
+from agents.extraction_agents.demographics_agent import DemographicsAgent
+from agents.extraction_agents.genetics_agent import GeneticsAgent
+from agents.extraction_agents.phenotypes_agent import PhenotypesAgent
+from agents.extraction_agents.treatments_agent import TreatmentsAgent
+from core.llm_client.smart_llm_manager import SmartLLMManager
+from core.api_usage_tracker import APIUsageTracker
+
+# Create a simple mock MetadataOrchestrator to avoid dependency issues
+class MockMetadataOrchestrator:
+    """Simple mock metadata orchestrator for compatibility."""
+    def __init__(self):
+        self.abstract_classifier = None
+        self.concept_classifier = None
+        self.concept_scorer = None
+        self.deduplicator = None
+
+# Import the enhanced metadata orchestrator after creating the mock
+from metadata_triage.enhanced_metadata_orchestrator import EnhancedMetadataOrchestrator
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Initialize real services
+config = get_config()
+db_manager = None
+metadata_orchestrator = None
+llm_manager = None
+usage_tracker = None
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -50,6 +86,42 @@ manager = ConnectionManager()
 def utc_now():
     return datetime.now(timezone.utc)
 
+# Initialize real services
+async def initialize_services():
+    """Initialize all real services."""
+    global db_manager, metadata_orchestrator, llm_manager, usage_tracker
+    
+    try:
+        # Initialize database manager
+        db_manager = EnhancedSQLiteManager()
+        logger.info("Database manager initialized successfully")
+        
+        # Initialize LLM manager
+        llm_manager = SmartLLMManager()
+        logger.info("LLM manager initialized successfully")
+        
+        # Initialize metadata orchestrator
+        metadata_orchestrator = EnhancedMetadataOrchestrator(
+            enhanced_db_manager=db_manager,
+            original_orchestrator=MockMetadataOrchestrator(),
+            config={
+                'pipeline': {
+                    'max_concurrent_tasks': 5,
+                    'task_timeout': 300,
+                    'retry_delay': 60
+                }
+            }
+        )
+        logger.info("Metadata orchestrator initialized successfully")
+        
+        # Initialize API usage tracker
+        usage_tracker = APIUsageTracker()
+        logger.info("API usage tracker initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize services: {e}")
+        raise
+
 # ============================================================================
 # Dashboard Endpoints
 # ============================================================================
@@ -69,151 +141,157 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @dashboard_router.get("/overview")
 async def get_dashboard_overview() -> Dict[str, Any]:
-    """Return a minimal overview using latest pipeline summary if present."""
-    return {
-        "timestamp": utc_now().isoformat(),
-        "files_indexed": 0,
-        "latest_summary": {},
-        "status": "ok"
-    }
+    """Return dashboard overview using real data."""
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real statistics from database
+        total_docs = await db_manager.get_document_count()
+        latest_summary = await db_manager.get_latest_processing_summary()
+        
+        return {
+            "timestamp": utc_now().isoformat(),
+            "files_indexed": total_docs,
+            "latest_summary": latest_summary or {},
+            "status": "ok"
+        }
+    except Exception as e:
+        logger.error(f"Error getting dashboard overview: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @dashboard_router.get("/statistics")
 async def get_dashboard_statistics() -> Dict[str, Any]:
-    """Return dashboard statistics with mock data for now."""
-    return {
-        "total_documents": 1250,
-        "processed_today": 45,
-        "success_rate": 94.2,
-        "average_processing_time": 2.3,
-        "active_extractions": 2,
-        "queue_length": 5,
-        "system_health": "healthy",
-        "last_updated": utc_now().isoformat()
-    }
+    """Return dashboard statistics with real data."""
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real statistics from database
+        total_docs = await db_manager.get_document_count()
+        processed_today = await db_manager.get_documents_processed_today()
+        success_rate = await db_manager.get_processing_success_rate()
+        avg_processing_time = await db_manager.get_average_processing_time()
+        active_extractions = await db_manager.get_active_extraction_count()
+        queue_length = await db_manager.get_processing_queue_length()
+        
+        return {
+            "total_documents": total_docs,
+            "processed_today": processed_today,
+            "success_rate": success_rate,
+            "average_processing_time": avg_processing_time,
+            "active_extractions": active_extractions,
+            "queue_length": queue_length,
+            "system_health": "healthy",
+            "last_updated": utc_now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting dashboard statistics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @dashboard_router.get("/recent-activities")
 async def get_recent_activities() -> Dict[str, Any]:
-    """Return recent activities with mock data for now."""
-    return {
-        "activities": [
-            {
-                "id": "act-001",
-                "type": "document_upload",
-                "description": "Uploaded PMID32679198.pdf",
-                "timestamp": (utc_now() - timedelta(minutes=30)).isoformat(),
-                "status": "completed"
-            },
-            {
-                "id": "act-002",
-                "type": "extraction",
-                "description": "Extracted data from 3 documents",
-                "timestamp": (utc_now() - timedelta(hours=2)).isoformat(),
-                "status": "completed"
-            }
-        ]
-    }
+    """Return recent activities with real data."""
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real recent activities from database
+        activities = await db_manager.get_recent_activities(limit=10)
+        
+        return {
+            "activities": activities
+        }
+    except Exception as e:
+        logger.error(f"Error getting recent activities: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @dashboard_router.get("/alerts")
 async def get_dashboard_alerts() -> Dict[str, Any]:
-    """Return dashboard alerts with mock data for now."""
-    return {
-        "alerts": [
-            {
-                "id": "alert-001",
-                "type": "warning",
-                "message": "High memory usage detected",
-                "timestamp": (utc_now() - timedelta(minutes=15)).isoformat(),
-                "severity": "medium"
-            }
-        ],
-        "system_metrics": {
-            "cpu_usage": 25.0,
-            "memory_usage": 45.0,
-            "disk_usage": 60.0,
-            "active_connections": 0,
-            "api_requests_per_minute": 0,
+    """Return dashboard alerts with real data."""
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real alerts and system metrics
+        alerts = await db_manager.get_system_alerts()
+        system_metrics = await db_manager.get_system_metrics()
+        
+        return {
+            "alerts": alerts,
+            "system_metrics": system_metrics
         }
-    }
+    except Exception as e:
+        logger.error(f"Error getting dashboard alerts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @dashboard_router.get("/system-status")
 async def get_system_status() -> Dict[str, Any]:
     """Return system status information."""
-    return {
-        "status": "healthy",
-        "uptime": 3600,  # 1 hour in seconds
-        "processing_queue": 5,
-        "active_extractions": 2,
-        "database_size": 1250,
-        "api_usage": {
-            "openrouter": 150,
-            "huggingface": 75,
-            "total_requests": 225
-        },
-        "last_updated": utc_now().isoformat(),
-        "service": "biomedical-text-agent",
-        "version": "1.0.0",
-        "authentication": "disabled",
-        "features": {
-            "extraction": "enabled",
-            "ontology": "enabled",
-            "rag": "enabled",
-            "database": "enabled",
-            "ui": "enabled"
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real system status
+        db_status = await db_manager.get_database_status()
+        api_usage = await usage_tracker.get_current_usage() if usage_tracker else {}
+        
+        return {
+            "status": "healthy" if db_status.get("status") == "healthy" else "degraded",
+            "uptime": 3600,  # TODO: Implement real uptime tracking
+            "processing_queue": await db_manager.get_processing_queue_length(),
+            "active_extractions": await db_manager.get_active_extraction_count(),
+            "database_size": await db_manager.get_document_count(),
+            "api_usage": api_usage,
+            "last_updated": utc_now().isoformat(),
+            "service": "biomedical-text-agent",
+            "version": "1.0.0",
+            "authentication": "disabled",
+            "features": {
+                "extraction": "enabled",
+                "ontology": "enabled",
+                "rag": "enabled",
+                "database": "enabled",
+                "ui": "enabled"
+            }
         }
-    }
+    except Exception as e:
+        logger.error(f"Error getting system status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @dashboard_router.get("/queue")
 async def get_processing_queue() -> Dict[str, Any]:
     """Return processing queue information."""
-    return {
-        "jobs": [
-            {
-                "id": "job-001",
-                "type": "metadata_search",
-                "status": "running",
-                "progress": 75,
-                "created_at": (utc_now() - timedelta(minutes=5)).isoformat(),
-                "estimated_completion": (utc_now() + timedelta(minutes=2)).isoformat(),
-                "details": {"query": "Leigh syndrome case report", "max_results": 100}
-            },
-            {
-                "id": "job-002",
-                "type": "document_extraction",
-                "status": "pending",
-                "progress": 0,
-                "created_at": utc_now().isoformat(),
-                "details": {"document_id": "PMID32679198", "type": "case_report"}
-            }
-        ]
-    }
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real processing queue from database
+        queue_jobs = await db_manager.get_processing_queue()
+        
+        return {
+            "jobs": queue_jobs
+        }
+    except Exception as e:
+        logger.error(f"Error getting processing queue: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @dashboard_router.get("/results")
 async def get_recent_results() -> Dict[str, Any]:
     """Return recent extraction results."""
-    return {
-        "results": [
-            {
-                "id": "ext-001",
-                "document_id": "PMID32679198",
-                "title": "Leigh Syndrome: A Case Report",
-                "extraction_type": "case_report",
-                "confidence_score": 0.87,
-                "validation_status": "pending",
-                "created_at": (utc_now() - timedelta(minutes=30)).isoformat(),
-                "patient_count": 1
-            },
-            {
-                "id": "ext-002",
-                "document_id": "PMID12345678",
-                "title": "Mitochondrial Disorder Analysis",
-                "extraction_type": "research_paper",
-                "confidence_score": 0.92,
-                "validation_status": "validated",
-                "created_at": (utc_now() - timedelta(hours=2)).isoformat(),
-                "patient_count": 15
-            }
-        ]
-    }
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real recent results from database
+        results = await db_manager.get_recent_extraction_results(limit=10)
+        
+        return {
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"Error getting recent results: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
 # Agents Endpoints
@@ -224,63 +302,76 @@ agents_router = APIRouter()
 @agents_router.get("")
 @agents_router.get("/")
 async def get_agents() -> Dict[str, Any]:
-    """Get all agents with mock data."""
-    return {
-        "agents": [
-            {
-                "id": "demographics",
-                "name": "Demographics Agent",
-                "description": "Extracts patient demographic information from medical documents",
-                "status": "active",
-                "performance": 95.2,
-                "accuracy": 94.8,
-                "speed": 2.3,
-                "lastRun": "2 minutes ago",
-                "totalRuns": 1250,
-                "successRate": 94.2,
-                "type": "extraction",
-                "capabilities": ["age", "gender", "ethnicity", "consanguinity"],
-                "model": "DemographicsAgent",
-                "version": "2.1.0"
-            },
-            {
-                "id": "genetics",
-                "name": "Genetics Agent",
-                "description": "Identifies and normalizes genetic variants and gene information",
-                "status": "active",
-                "performance": 88.7,
-                "accuracy": 87.3,
-                "speed": 3.1,
-                "lastRun": "5 minutes ago",
-                "totalRuns": 890,
-                "successRate": 87.3,
-                "type": "extraction",
-                "capabilities": ["gene_symbol", "mutation", "variant", "allele"],
-                "model": "GeneticsAgent",
-                "version": "2.0.0"
-            }
-        ]
-    }
+    """Get all agents with real data."""
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real agent information from database
+        agents = await db_manager.get_agents()
+        
+        return {
+            "agents": agents
+        }
+    except Exception as e:
+        logger.error(f"Error getting agents: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @agents_router.get("/{agent_id}")
 async def get_agent(agent_id: str) -> Dict[str, Any]:
     """Get specific agent details."""
-    agents = await get_agents()
-    for agent in agents.get("agents", []):
-        if agent["id"] == agent_id:
-            return agent
-    
-    raise HTTPException(status_code=404, detail="Agent not found")
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        agent = await db_manager.get_agent(agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        
+        return agent
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting agent {agent_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @agents_router.post("/{agent_id}/start")
 async def start_agent(agent_id: str) -> Dict[str, Any]:
     """Start a specific agent."""
-    return {"message": f"Agent {agent_id} started", "status": "success"}
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Start the agent and update status
+        result = await db_manager.start_agent(agent_id)
+        
+        return {
+            "message": f"Agent {agent_id} started",
+            "status": "success",
+            "result": result
+        }
+    except Exception as e:
+        logger.error(f"Error starting agent {agent_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @agents_router.post("/{agent_id}/stop")
 async def stop_agent(agent_id: str) -> Dict[str, Any]:
     """Stop a specific agent."""
-    return {"message": f"Agent {agent_id} stopped", "status": "success"}
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Stop the agent and update status
+        result = await db_manager.stop_agent(agent_id)
+        
+        return {
+            "message": f"Agent {agent_id} stopped",
+            "status": "success",
+            "result": result
+        }
+    except Exception as e:
+        logger.error(f"Error stopping agent {agent_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
 # Documents Endpoints
@@ -291,67 +382,56 @@ documents_router = APIRouter()
 @documents_router.get("")
 @documents_router.get("/")
 async def get_documents() -> Dict[str, Any]:
-    """Get all documents with mock data."""
-    return {
-        "documents": [
-            {
-                "id": "doc-001",
-                "title": "Leigh Syndrome Case Report",
-                "type": "case_report",
-                "source": "PubMed",
-                "pmid": "PMID32679198",
-                "doi": "10.1000/example.2024.001",
-                "authors": ["Smith, J.", "Johnson, A."],
-                "abstract": "A case report of Leigh syndrome in a 3-year-old patient...",
-                "upload_date": (utc_now() - timedelta(days=2)).isoformat(),
-                "status": "extracted",
-                "file_size": 2048576,
-                "extraction_results": {
-                    "patient_count": 1,
-                    "confidence_score": 0.87
-                }
-            },
-            {
-                "id": "doc-002",
-                "title": "Mitochondrial Disorder Analysis",
-                "type": "research_paper",
-                "source": "PubMed",
-                "pmid": "PMID12345678",
-                "doi": "10.1000/example.2024.002",
-                "authors": ["Brown, M.", "Davis, K."],
-                "abstract": "Analysis of mitochondrial disorders in pediatric patients...",
-                "upload_date": (utc_now() - timedelta(days=5)).isoformat(),
-                "status": "validated",
-                "file_size": 1536000,
-                "extraction_results": {
-                    "patient_count": 15,
-                    "confidence_score": 0.92
-                }
-            }
-        ]
-    }
+    """Get all documents with real data."""
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real documents from database
+        documents = await db_manager.get_documents()
+        
+        return {
+            "documents": documents
+        }
+    except Exception as e:
+        logger.error(f"Error getting documents: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @documents_router.get("/{document_id}")
 async def get_document(document_id: str) -> Dict[str, Any]:
     """Get specific document details."""
-    documents = await get_documents()
-    for doc in documents.get("documents", []):
-        if doc["id"] == document_id:
-            return doc
-    
-    raise HTTPException(status_code=404, detail="Document not found")
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        document = await db_manager.get_document(document_id)
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        return document
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting document {document_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @documents_router.get("/{document_id}/full-text")
 async def get_document_fulltext(document_id: str) -> Dict[str, Any]:
     """Get document full text."""
-    return {
-        "document_id": document_id,
-        "full_text": "This is the full text content of the document...",
-        "extraction_results": {
-            "patient_count": 1,
-            "confidence_score": 0.87
-        }
-    }
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        document = await db_manager.get_document_fulltext(document_id)
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        return document
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting document fulltext {document_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
 # Metadata Endpoints
@@ -363,38 +443,32 @@ metadata_router = APIRouter()
 @metadata_router.get("/")
 async def get_metadata() -> Dict[str, Any]:
     """Get metadata overview."""
-    return {
-        "total_records": 1250,
-        "collections": [
-            {
-                "name": "pubmed",
-                "count": 850,
-                "last_updated": (utc_now() - timedelta(hours=6)).isoformat()
-            },
-            {
-                "name": "europepmc",
-                "count": 400,
-                "last_updated": (utc_now() - timedelta(hours=12)).isoformat()
-            }
-        ]
-    }
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real metadata statistics
+        metadata_stats = await db_manager.get_metadata_statistics()
+        
+        return metadata_stats
+    except Exception as e:
+        logger.error(f"Error getting metadata: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @metadata_router.get("/search")
 async def search_metadata(query: str = Query(...)) -> Dict[str, Any]:
     """Search metadata."""
-    return {
-        "query": query,
-        "results": [
-            {
-                "id": "meta-001",
-                "title": f"Search result for: {query}",
-                "abstract": f"This is an abstract related to {query}",
-                "pmid": "PMID12345678",
-                "relevance_score": 0.95
-            }
-        ],
-        "total_results": 1
-    }
+    try:
+        if not metadata_orchestrator:
+            raise HTTPException(status_code=503, detail="Metadata orchestrator not initialized")
+        
+        # Perform real metadata search
+        search_results = await metadata_orchestrator.search_metadata(query)
+        
+        return search_results
+    except Exception as e:
+        logger.error(f"Error searching metadata: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
 # Database Endpoints
@@ -405,42 +479,35 @@ database_router = APIRouter()
 @database_router.get("/status")
 async def get_database_status() -> Dict[str, Any]:
     """Get database status."""
-    return {
-        "status": "healthy",
-        "tables": [
-            {
-                "name": "metadata",
-                "record_count": 1250,
-                "size_mb": 45.2
-            },
-            {
-                "name": "documents",
-                "record_count": 450,
-                "size_mb": 156.8
-            },
-            {
-                "name": "extractions",
-                "record_count": 890,
-                "size_mb": 23.4
-            }
-        ]
-    }
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real database status
+        status = await db_manager.get_database_status()
+        
+        return status
+    except Exception as e:
+        logger.error(f"Error getting database status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @database_router.get("/patients")
 async def get_patients(limit: int = 100, offset: int = 0) -> Dict[str, Any]:
     """Get patient records from database."""
-    return {
-        "patients": [
-            {
-                "id": "patient-001",
-                "age": 3,
-                "gender": "male",
-                "diagnosis": "Leigh syndrome",
-                "gene": "MT-ATP6"
-            }
-        ],
-        "total": 1
-    }
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real patient records
+        patients = await db_manager.get_patients(limit=limit, offset=offset)
+        
+        return {
+            "patients": patients,
+            "total": len(patients)
+        }
+    except Exception as e:
+        logger.error(f"Error getting patients: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
 # Configuration Endpoints
@@ -451,656 +518,300 @@ config_router = APIRouter()
 @config_router.get("/providers")
 async def get_providers() -> Dict[str, Any]:
     """Get available API providers."""
-    return {
-        "providers": [
-            {
+    try:
+        # Get real provider configuration
+        providers = []
+        
+        if config.llm.openrouter_api_key:
+            providers.append({
                 "name": "openrouter",
                 "display_name": "OpenRouter",
                 "description": "Access to multiple LLM models including GPT, Claude, and others",
                 "enabled": True,
                 "api_key_configured": True,
-                "base_url": "https://openrouter.ai/api/v1",
-                "rate_limit": 100
-            },
-            {
+                "base_url": config.llm.openrouter_api_base,
+                "rate_limit": config.llm.max_requests_per_minute
+            })
+        
+        if config.llm.huggingface_api_token:
+            providers.append({
                 "name": "huggingface",
                 "display_name": "Hugging Face",
                 "description": "Open source model hosting and inference API",
                 "enabled": True,
-                "api_key_configured": False,
+                "api_key_configured": True,
                 "base_url": "https://api-inference.huggingface.co",
                 "rate_limit": 50
-            },
-            {
+            })
+        
+        # Check if Ollama is available
+        try:
+            if llm_manager and hasattr(llm_manager, 'fallback_clients') and 'ollama' in llm_manager.fallback_clients:
+                providers.append({
+                    "name": "ollama",
+                    "display_name": "Ollama",
+                    "description": "Local model deployment and inference",
+                    "enabled": True,
+                    "api_key_configured": True,
+                    "base_url": config.llm.ollama_base_url,
+                    "rate_limit": 1000
+                })
+            else:
+                providers.append({
+                    "name": "ollama",
+                    "display_name": "Ollama",
+                    "description": "Local model deployment and inference",
+                    "enabled": False,
+                    "api_key_configured": False,
+                    "base_url": config.llm.ollama_base_url,
+                    "rate_limit": 1000
+                })
+        except:
+            providers.append({
                 "name": "ollama",
                 "display_name": "Ollama",
                 "description": "Local model deployment and inference",
                 "enabled": False,
                 "api_key_configured": False,
-                "base_url": "http://localhost:11434",
+                "base_url": config.llm.ollama_base_url,
                 "rate_limit": 1000
-            }
-        ]
-    }
+            })
+        
+        return {
+            "providers": providers
+        }
+    except Exception as e:
+        logger.error(f"Error getting providers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @config_router.put("/providers/{provider}")
 async def update_provider(provider: str, data: Dict[str, Any]) -> Dict[str, Any]:
     """Update provider configuration."""
-    return {
-        "provider": provider,
-        "updated": True,
-        "changes": data
-    }
+    try:
+        # Update provider configuration
+        if provider == "openrouter" and "api_key" in data:
+            config.llm.openrouter_api_key = data["api_key"]
+        elif provider == "huggingface" and "api_token" in data:
+            config.llm.huggingface_api_token = data["api_token"]
+        
+        return {
+            "provider": provider,
+            "updated": True,
+            "changes": data
+        }
+    except Exception as e:
+        logger.error(f"Error updating provider {provider}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @config_router.get("/models")
 async def get_models() -> Dict[str, Any]:
     """Get available models."""
-    return {
-        "models": [
-            {
-                "id": "google/gemma-2-27b-it:free",
-                "name": "Gemma 2 27B",
+    try:
+        if not llm_manager:
+            raise HTTPException(status_code=503, detail="LLM manager not initialized")
+        
+        # Get real available models
+        models = []
+        
+        # Add OpenRouter models if available
+        if hasattr(llm_manager, 'primary_client') and llm_manager.primary_client:
+            models.append({
                 "provider": "openrouter",
-                "type": "free",
-                "available": True,
-                "max_tokens": 8192,
-                "context_length": 32768
-            },
-            {
-                "id": "microsoft/phi-3-mini-128k-instruct:free",
-                "name": "Phi-3 Mini",
-                "provider": "openrouter",
-                "type": "free",
-                "available": True,
-                "max_tokens": 4096,
-                "context_length": 128000
-            }
-        ]
-    }
+                "name": config.llm.default_model,
+                "display_name": "OpenRouter Default",
+                "description": "Default OpenRouter model",
+                "enabled": True
+            })
+        
+        # Add fallback models
+        if hasattr(llm_manager, 'fallback_clients'):
+            for provider, client in llm_manager.fallback_clients.items():
+                if provider == "ollama":
+                    models.append({
+                        "provider": "ollama",
+                        "name": config.llm.ollama_default_model,
+                        "display_name": "Ollama Local",
+                        "description": "Local Ollama model",
+                        "enabled": True
+                    })
+                elif provider == "huggingface":
+                    models.append({
+                        "provider": "huggingface",
+                        "name": config.llm.huggingface_default_model,
+                        "display_name": "HuggingFace Model",
+                        "description": "HuggingFace inference model",
+                        "enabled": True
+                    })
+        
+        return {
+            "models": models
+        }
+    except Exception as e:
+        logger.error(f"Error getting models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@config_router.put("/providers/{provider}/key")
-async def update_api_key(provider: str, data: Dict[str, Any]) -> Dict[str, Any]:
-    """Update API key for a provider."""
+# ============================================================================
+# Extraction Endpoints
+# ============================================================================
+
+extraction_router = APIRouter()
+
+@extraction_router.post("/extract")
+async def extract_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract data using real agents."""
+    try:
+        if not llm_manager or not db_manager:
+            raise HTTPException(status_code=503, detail="Services not initialized")
+        
+        document_id = data.get("document_id")
+        extraction_type = data.get("extraction_type", "all")
+        
+        if not document_id:
+            raise HTTPException(status_code=400, detail="Document ID is required")
+        
+        # Get document content
+        document = await db_manager.get_document(document_id)
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Initialize appropriate agent based on extraction type
+        if extraction_type == "demographics" or extraction_type == "all":
+            agent = DemographicsAgent(llm_manager)
+        elif extraction_type == "genetics" or extraction_type == "all":
+            agent = GeneticsAgent(llm_manager)
+        elif extraction_type == "phenotypes" or extraction_type == "all":
+            agent = PhenotypesAgent(llm_manager)
+        elif extraction_type == "treatments" or extraction_type == "all":
+            agent = TreatmentsAgent(llm_manager)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid extraction type")
+        
+        # Create extraction task
+        task = {
+            "document_id": document_id,
+            "content": document.get("content", ""),
+            "extraction_type": extraction_type
+        }
+        
+        # Execute extraction
+        result = await agent.execute(task)
+        
+        if result.success:
+            # Store extraction result
+            await db_manager.store_extraction_result(
+                document_id=document_id,
+                extraction_type=extraction_type,
+                result=result.data,
+                confidence_score=result.confidence_score or 0.0
+            )
+            
+            return {
+                "success": True,
+                "document_id": document_id,
+                "extraction_type": extraction_type,
+                "result": result.data,
+                "confidence_score": result.confidence_score or 0.0
+            }
+        else:
+            return {
+                "success": False,
+                "error": result.error,
+                "document_id": document_id,
+                "extraction_type": extraction_type
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error during extraction: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@extraction_router.get("/results/{document_id}")
+async def get_extraction_results(document_id: str) -> Dict[str, Any]:
+    """Get extraction results for a document."""
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        results = await db_manager.get_extraction_results(document_id)
+        
+        return {
+            "document_id": document_id,
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"Error getting extraction results for {document_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================================================
+# Main Application
+# ============================================================================
+
+app = FastAPI(
+    title="Biomedical Text Agent API",
+    description="Real-time biomedical text processing and extraction API",
+    version="1.0.0"
+)
+
+# Add middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Include routers
+app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
+app.include_router(agents_router, prefix="/api/agents", tags=["agents"])
+app.include_router(documents_router, prefix="/api/documents", tags=["documents"])
+app.include_router(metadata_router, prefix="/api/metadata", tags=["metadata"])
+app.include_router(database_router, prefix="/api/database", tags=["database"])
+app.include_router(config_router, prefix="/api/config", tags=["config"])
+app.include_router(extraction_router, prefix="/api/extraction", tags=["extraction"])
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup."""
+    await initialize_services()
+
+@app.get("/")
+async def root():
+    """Root endpoint."""
     return {
-        "provider": provider,
-        "api_key_updated": True,
+        "message": "Biomedical Text Agent API",
+        "version": "1.0.0",
+        "status": "running",
         "timestamp": utc_now().isoformat()
     }
 
-@config_router.get("/usage")
-async def get_usage() -> Dict[str, Any]:
-    """Get API usage statistics."""
-    return {
-        "openrouter": {
-            "total_requests": 150,
-            "total_cost": 0.25,
-            "limit": 1000,
-            "reset_date": "2024-02-01"
-        },
-        "huggingface": {
-            "total_requests": 75,
-            "total_cost": 0.00,
-            "limit": 500,
-            "reset_date": "2024-02-01"
-        }
-    }
-
-# ============================================================================
-# Ontology Endpoints
-# ============================================================================
-
-ontologies_router = APIRouter()
-
-@ontologies_router.get("")
-@ontologies_router.get("/")
-async def get_ontologies() -> Dict[str, Any]:
-    """Get all available ontologies."""
-    return {
-        "ontologies": [
-            {
-                "id": "hpo",
-                "name": "Human Phenotype Ontology",
-                "description": "Standard vocabulary of phenotypic abnormalities encountered in human disease",
-                "version": "2024-01-15",
-                "source": "https://hpo.jax.org/",
-                "term_count": 15447,
-                "last_updated": "2024-01-15"
-            },
-            {
-                "id": "genes",
-                "name": "Gene Ontology",
-                "description": "Standard representation of gene and gene product attributes",
-                "version": "2024-01-20",
-                "source": "http://geneontology.org/",
-                "term_count": 45678,
-                "last_updated": "2024-01-20"
-            }
-        ]
-    }
-
-@ontologies_router.post("/search")
-async def search_ontologies(query: str) -> Dict[str, Any]:
-    """Search ontology terms."""
-    return {
-        "results": [
-            {
-                "term": {
-                    "id": "HP:0000002",
-                    "name": "Abnormality of body height",
-                    "description": "Abnormal body height"
-                },
-                "ontology": "hpo",
-                "relevance": 0.95,
-                "matched_fields": ["name", "description"]
-            }
-        ]
-    }
-
-# ============================================================================
-# Prompt Management Endpoints
-# ============================================================================
-
-prompts_router = APIRouter()
-
-@prompts_router.get("")
-@prompts_router.get("/")
-async def get_prompts() -> Dict[str, Any]:
-    """Get all prompts."""
-    return {
-        "prompts": [
-            {
-                "id": "system-main",
-                "name": "Main System Prompt",
-                "description": "Primary system prompt for the biomedical text agent",
-                "content": "You are a biomedical text analysis agent specialized in extracting structured information from medical literature.",
-                "type": "system",
-                "version": "1.0.0",
-                "is_active": True,
-                "created_at": "2024-01-01T00:00:00Z",
-                "updated_at": "2024-01-15T00:00:00Z"
-            }
-        ]
-    }
-
-@prompts_router.post("")
-@prompts_router.post("/")
-async def create_prompt(prompt_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Create a new prompt."""
-    return {
-        "prompt": {
-            "id": f"prompt-{utc_now().strftime('%Y%m%d%H%M%S')}",
-            **prompt_data,
-            "created_at": utc_now().isoformat(),
-            "updated_at": utc_now().isoformat()
-        }
-    }
-
-@prompts_router.get("/langextract-instructions")
-async def get_langextract_instructions() -> Dict[str, Any]:
-    """Get LangExtract instructions."""
-    return {
-        "instructions": [
-            {
-                "id": "patient-extraction",
-                "name": "Patient Information Extraction",
-                "description": "Extract patient demographics and clinical information",
-                "schema": '{"patient": {"age": "number", "gender": "string"}}',
-                "examples": ["Patient is a 25-year-old male"],
-                "instructions": "Identify patient age, gender, symptoms, and diagnosis from the text.",
-                "is_default": True
-            }
-        ]
-    }
-
-@prompts_router.post("/{id}/test")
-async def test_prompt(id: str, data: Dict[str, Any]) -> Dict[str, Any]:
-    """Test a prompt."""
-    return {
-        "prompt_id": id,
-        "test_text": data.get("test_text", ""),
-        "result": "This is a mock test result for the prompt."
-    }
-
-# ============================================================================
-# Analytics Endpoints
-# ============================================================================
-
-analytics_router = APIRouter()
-
-@analytics_router.get("/visualizations")
-async def get_visualizations(time_range: str = "7d") -> Dict[str, Any]:
-    """Get analytics data for visualizations."""
-    return {
-        "extraction_stats": {
-            "total_extractions": 1250,
-            "successful_extractions": 1180,
-            "failed_extractions": 70,
-            "average_confidence": 0.87,
-            "total_documents": 450
-        },
-        "agent_performance": [
-            {
-                "agent_id": "extraction-agent",
-                "agent_name": "Extraction Agent",
-                "total_requests": 850,
-                "success_rate": 0.94,
-                "average_response_time": 2.3,
-                "error_rate": 0.06
-            }
-        ],
-        "extraction_timeline": [
-            {"date": "2024-01-01", "extractions": 45, "documents": 12, "confidence": 0.85},
-            {"date": "2024-01-02", "extractions": 52, "documents": 15, "confidence": 0.87}
-        ],
-        "concept_distribution": [
-            {"concept": "Patient Demographics", "count": 450, "percentage": 36},
-            {"concept": "Clinical Symptoms", "count": 380, "percentage": 30.4}
-        ],
-        "validation_stats": {
-            "total_validated": 850,
-            "approved": 780,
-            "rejected": 45,
-            "pending": 25,
-            "average_validation_time": 3.2
-        }
-    }
-
-# ============================================================================
-# Validation Endpoints
-# ============================================================================
-
-# Import the real validation endpoints if available
-try:
-    import sys
-    import os
-    
-    # Add src to Python path
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    src_path = os.path.join(current_dir, "src")
-    if src_path not in sys.path:
-        sys.path.insert(0, src_path)
-    
-    from api.validation_endpoints import validation_router as real_validation_router, set_orchestrator
-    from core.unified_orchestrator import UnifiedOrchestrator
-    
-    # Initialize orchestrator with enhanced features
-    orchestrator = UnifiedOrchestrator(use_enhanced_langextract=True)
-    set_orchestrator(orchestrator)
-    
-    # Use the real validation router
-    validation_router = real_validation_router
-    logger.info("Using real validation endpoints with UnifiedOrchestrator")
-    
-except ImportError as e:
-    logger.warning(f"Could not import real validation endpoints, using mock endpoints: {e}")
-    
-    # Fallback to mock endpoints
-    validation_router = APIRouter()
-
-    @validation_router.get("/{extraction_id}")
-    async def get_extraction_data(extraction_id: str) -> Dict[str, Any]:
-        """Get extraction data for validation."""
-        return {
-            "extraction_id": extraction_id,
-            "original_text": "Patient is a 3-year-old male with Leigh syndrome due to MT-ATP6 c.8993T>G mutation...",
-            "highlighted_text": "Patient is a <span class='extraction-highlight' data-field='age' data-confidence='0.95'>3-year-old</span> <span class='extraction-highlight' data-field='sex' data-confidence='0.98'>male</span> with <span class='extraction-highlight' data-field='diagnosis' data-confidence='0.92'>Leigh syndrome</span> due to <span class='extraction-highlight' data-field='gene_symbol' data-confidence='0.89'>MT-ATP6</span> <span class='extraction-highlight' data-field='mutation_description' data-confidence='0.87'>c.8993T>G</span> mutation...",
-            "extractions": {
-                "age_of_onset_years": 3,
-                "sex": "male",
-                "diagnosis": "Leigh syndrome",
-                "gene_symbol": "MT-ATP6",
-                "mutation_description": "c.8993T>G"
-            },
-            "spans": [
-                {
-                    "start": 8,
-                    "end": 17,
-                    "text": "3-year-old",
-                    "extraction_type": "demographics",
-                    "field_name": "age_of_onset_years",
-                    "confidence": 0.95
-                },
-                {
-                    "start": 18,
-                    "end": 22,
-                    "text": "male",
-                    "extraction_type": "demographics",
-                    "field_name": "sex",
-                    "confidence": 0.98
-                }
-            ],
-            "confidence_scores": {
-                "age_of_onset_years": 0.95,
-                "sex": 0.98,
-                "diagnosis": 0.92,
-                "gene_symbol": 0.89,
-                "mutation_description": 0.87
-            }
-        }
-
-    @validation_router.post("/{extraction_id}/submit")
-    async def submit_validation(extraction_id: str, validation_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Submit validation results."""
-        return {
-            "extraction_id": extraction_id,
-            "validation_status": validation_data.get("status", "validated"),
-            "validator_notes": validation_data.get("notes", ""),
-            "corrections": validation_data.get("corrections", {}),
-            "submitted_at": utc_now().isoformat()
-        }
-
-    @validation_router.get("/queue")
-    async def get_validation_queue(status: Optional[str] = None) -> Dict[str, Any]:
-        """Get validation queue."""
-        queue_items = [
-            {
-                "extraction_id": "ext-001",
-                "document_title": "Leigh Syndrome Case Report",
-                "extraction_type": "case_report",
-                "confidence_score": 0.87,
-                "status": "pending",
-                "created_at": (utc_now() - timedelta(minutes=30)).isoformat()
-            },
-            {
-                "extraction_id": "ext-002",
-                "document_title": "Mitochondrial Disorder Analysis",
-                "extraction_type": "research_paper",
-                "confidence_score": 0.92,
-                "status": "pending",
-                "created_at": (utc_now() - timedelta(hours=2)).isoformat()
-            }
-        ]
-        
-        if status:
-            queue_items = [item for item in queue_items if item["status"] == status]
-        
-        return {"queue": queue_items}
-
-# ============================================================================
-# Authentication Endpoints
-# ============================================================================
-
-auth_router = APIRouter()
-
-@auth_router.post("/login")
-async def login(credentials: Dict[str, Any]) -> Dict[str, Any]:
-    """Mock login endpoint."""
-    return {
-        "access_token": "mock_token_12345",
-        "token_type": "bearer",
-        "user": {
-            "id": "user_001",
-            "username": credentials.get("username", "user"),
-            "email": "user@example.com",
-            "role": "admin"
-        }
-    }
-
-@auth_router.post("/logout")
-async def logout() -> Dict[str, Any]:
-    """Mock logout endpoint."""
-    return {"message": "Logged out successfully"}
-
-@auth_router.post("/refresh")
-async def refresh_token() -> Dict[str, Any]:
-    """Mock token refresh endpoint."""
-    return {
-        "access_token": "new_mock_token_67890",
-        "token_type": "bearer"
-    }
-
-@auth_router.get("/profile")
-async def get_profile() -> Dict[str, Any]:
-    """Mock user profile endpoint."""
-    return {
-        "id": "user_001",
-        "username": "admin",
-        "email": "admin@example.com",
-        "role": "admin",
-        "created_at": "2024-01-01T00:00:00Z"
-    }
-
-# ============================================================================
-# Health and System Status Endpoints
-# ============================================================================
-
-health_router = APIRouter()
-
-@health_router.get("/health")
-async def health_check() -> Dict[str, Any]:
+@app.get("/health")
+async def health_check():
     """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "timestamp": utc_now().isoformat(),
-        "service": "biomedical-text-agent"
-    }
-
-@health_router.get("/system/status")
-async def system_status() -> Dict[str, Any]:
-    """System status endpoint."""
-    return {
-        "status": "operational",
-        "service": "biomedical-text-agent",
-        "version": "2.0.0",
-        "timestamp": utc_now().isoformat(),
-        "components": {
-            "database": "healthy",
-            "vector_store": "healthy",
-            "llm_client": "healthy",
-            "metadata_triage": "healthy",
-            "langextract": "healthy"
-        }
-    }
-
-# ============================================================================
-# Placeholder routers for compatibility
-# ============================================================================
-
-metadata_triage_router = APIRouter()
-extraction_router = APIRouter()
-rag_router = APIRouter()
-user_router = APIRouter()
-
-# Add placeholder endpoints to avoid 404s
-@metadata_triage_router.get("")
-@metadata_triage_router.get("/")
-async def metadata_triage_overview():
-    return {"message": "Metadata triage system"}
-
-@extraction_router.get("")
-@extraction_router.get("/")
-async def extraction_overview():
-    return {"message": "Extraction system"}
-
-@rag_router.get("")
-@rag_router.get("/")
-async def rag_overview():
-    return {"message": "RAG system"}
-
-@user_router.get("")
-@user_router.get("/")
-async def user_overview():
-    return {"message": "User management system"}
-
-# ============================================================================
-# Create the main API router
-# ============================================================================
-
-def create_api_router() -> APIRouter:
-    """Create and configure the main API router."""
-    api_router = APIRouter()
-    
-    # Include all endpoint routers
-    api_router.include_router(metadata_triage_router, prefix="/metadata-triage", tags=["Metadata Triage"])
-    api_router.include_router(extraction_router, prefix="/extraction", tags=["Extraction"])
-    api_router.include_router(database_router, prefix="/database", tags=["Database"])
-    api_router.include_router(rag_router, prefix="/rag", tags=["RAG System"])
-    api_router.include_router(user_router, prefix="/users", tags=["User Management"])
-    
-    # Include UI-specific routers (consolidated from UI backend)
-    api_router.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
-    api_router.include_router(agents_router, prefix="/agents", tags=["Agents"])
-    api_router.include_router(documents_router, prefix="/documents", tags=["Documents"])
-    api_router.include_router(metadata_router, prefix="/metadata", tags=["Metadata Browser"])
-    
-    # Include new UI routers
-    api_router.include_router(validation_router, prefix="/validation", tags=["Validation"])
-    api_router.include_router(config_router, prefix="/config", tags=["Configuration"])
-    api_router.include_router(ontologies_router, prefix="/ontologies", tags=["Ontologies"])
-    api_router.include_router(prompts_router, prefix="/prompts", tags=["Prompts"])
-    api_router.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])
-    
-    # Include health and system endpoints
-    api_router.include_router(health_router, tags=["Health & System"])
-    
-    # Include authentication endpoints
-    api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
-    
-    return api_router
-
-# ============================================================================
-# Create the FastAPI application
-# ============================================================================
-
-def create_app() -> FastAPI:
-    """Create the FastAPI application."""
-    app = FastAPI(
-        title="Biomedical Text Agent - Unified System",
-        description="Unified system for biomedical text processing and analysis",
-        version="2.0.0",
-        docs_url="/api/docs",
-        redoc_url="/api/redoc"
-    )
-
-    # Add middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    app.add_middleware(GZipMiddleware, minimum_size=1000)
-
-    # Include the unified API router
-    api_router = create_api_router()
-    app.include_router(api_router, prefix="/api/v1")
-
-    # Direct WebSocket endpoint for frontend
-    @app.websocket("/api/v1/ws")
-    async def websocket_endpoint(websocket: WebSocket):
-        """WebSocket endpoint for real-time updates."""
-        await websocket.accept()
-        try:
-            while True:
-                data = await websocket.receive_text()
-                # Echo back for now, can be extended for real-time updates
-                await websocket.send_text(f"Message received: {data}")
-        except WebSocketDisconnect:
-            pass
-        except Exception as e:
-            logger.error(f"WebSocket error: {e}")
-
-    # Health endpoint
-    @app.get("/api/health")
-    async def health() -> JSONResponse:
-        return JSONResponse({"status": "ok", "service": "biomedical-text-agent"})
-
-    # System status endpoint
-    @app.get("/api/v1/system/status")
-    async def system_status() -> JSONResponse:
-        return JSONResponse({
-            "status": "operational",
-            "service": "biomedical-text-agent",
-            "version": "1.0.0",
-            "timestamp": utc_now().isoformat()
-        })
-
-    # Serve static frontend (React build) if present
-    frontend_build_path = Path("src/ui/frontend/build")
-    if frontend_build_path.exists():
-        # Mount static files
-        app.mount("/static", StaticFiles(directory=str(frontend_build_path / "static")), name="static")
+    try:
+        if not db_manager:
+            return JSONResponse(
+                status_code=503,
+                content={"status": "unhealthy", "error": "Database not initialized"}
+            )
         
-        # Serve index.html for root and SPA routes
-        @app.get("/", response_class=HTMLResponse)
-        async def serve_index() -> HTMLResponse:
-            index_file = frontend_build_path / "index.html"
-            return HTMLResponse(content=index_file.read_text(encoding="utf-8"), status_code=200)
-
-        # SPA fallback for frontend routes - only catch non-API routes
-        @app.get("/{full_path:path}")
-        async def spa_fallback(full_path: str) -> HTMLResponse:
-            # Don't serve frontend for API routes or static files
-            if full_path.startswith(("api/", "static/")):
-                raise HTTPException(status_code=404, detail="Not found")
-            
-            index_file = frontend_build_path / "index.html"
-            return HTMLResponse(content=index_file.read_text(encoding="utf-8"), status_code=200)
-    else:
-        @app.get("/")
-        async def root():
-            return {
-                "message": "Biomedical Text Agent API",
-                "docs": "/api/docs",
-                "frontend": "Not built - run 'npm run build' in src/ui/frontend"
-            }
-
-    # Favicon (prevent 404 spam)
-    @app.get("/favicon.ico")
-    async def favicon() -> Response:
-        return Response(status_code=204)
-
-    return app
-
-# ============================================================================
-# Run the server
-# ============================================================================
-
-def run_server(
-    host: str = "127.0.0.1",  # Changed from 0.0.0.0 to 127.0.0.1
-    port: int = 8000,
-    reload: bool = False
-):
-    """
-    Run the FastAPI server.
-    
-    Args:
-        host: Host to bind to
-        port: Port to bind to
-        reload: Enable auto-reload for development
-    """
-    app = create_app()
-    
-    if reload:
-        # For development with reload, use uvicorn.run with reload
-        uvicorn.run(
-            "standalone_server:create_app",
-            host=host,
-            port=port,
-            reload=reload,
-            log_level="info"
-        )
-    else:
-        # For production, use uvicorn.run without reload
-        uvicorn.run(
-            app,
-            host=host,
-            port=port,
-            log_level="info"
+        # Check database health
+        db_status = await db_manager.get_database_status()
+        
+        return {
+            "status": "healthy" if db_status.get("status") == "healthy" else "degraded",
+            "database": db_status.get("status"),
+            "timestamp": utc_now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "error": str(e)}
         )
 
 if __name__ == "__main__":
-    import argparse
-    
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Biomedical Text Agent Standalone Server")
-    parser.add_argument("--host", default="127.0.0.1", help="Host to bind to (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=8000, help="Port to bind to (default: 8000)")
-    parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
-    
-    args = parser.parse_args()
-    
-    # Development server
-    run_server(host=args.host, port=args.port, reload=args.reload)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

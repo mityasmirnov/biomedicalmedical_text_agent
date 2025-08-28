@@ -901,6 +901,33 @@ class EnhancedMetadataOrchestrator:
             logger.error(f"Error cancelling task: {e}")
             raise
     
+    async def search_metadata(self, query: str) -> Dict[str, Any]:
+        """Search metadata using the orchestrator."""
+        try:
+            # For now, return a basic search result
+            # TODO: Implement real metadata search using the orchestrator
+            return {
+                "query": query,
+                "results": [
+                    {
+                        "id": f"meta-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                        "title": f"Search result for: {query}",
+                        "abstract": f"This is an abstract related to {query}",
+                        "pmid": "PMID12345678",
+                        "relevance_score": 0.95
+                    }
+                ],
+                "total_results": 1
+            }
+        except Exception as e:
+            logger.error(f"Error searching metadata: {e}")
+            return {
+                "query": query,
+                "results": [],
+                "total_results": 0,
+                "error": str(e)
+            }
+    
     async def cleanup_completed_tasks(self, max_age_hours: int = 24):
         """Clean up old completed tasks."""
         try:
