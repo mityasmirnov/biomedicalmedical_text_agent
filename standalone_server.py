@@ -709,86 +709,106 @@ async def get_visualizations(time_range: str = "7d") -> Dict[str, Any]:
 # Validation Endpoints
 # ============================================================================
 
-validation_router = APIRouter()
+# Import the real validation endpoints if available
+try:
+    import sys
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from src.api.validation_endpoints import validation_router as real_validation_router, set_orchestrator
+    from src.core.unified_orchestrator import UnifiedOrchestrator
+    
+    # Initialize orchestrator with enhanced features
+    orchestrator = UnifiedOrchestrator(use_enhanced_langextract=True)
+    set_orchestrator(orchestrator)
+    
+    # Use the real validation router
+    validation_router = real_validation_router
+    logger.info("Using real validation endpoints with UnifiedOrchestrator")
+    
+except ImportError as e:
+    logger.warning(f"Could not import real validation endpoints, using mock endpoints: {e}")
+    
+    # Fallback to mock endpoints
+    validation_router = APIRouter()
 
-@validation_router.get("/{extraction_id}")
-async def get_extraction_data(extraction_id: str) -> Dict[str, Any]:
-    """Get extraction data for validation."""
-    return {
-        "extraction_id": extraction_id,
-        "original_text": "Patient is a 3-year-old male with Leigh syndrome due to MT-ATP6 c.8993T>G mutation...",
-        "highlighted_text": "Patient is a <span class='extraction-highlight' data-field='age' data-confidence='0.95'>3-year-old</span> <span class='extraction-highlight' data-field='sex' data-confidence='0.98'>male</span> with <span class='extraction-highlight' data-field='diagnosis' data-confidence='0.92'>Leigh syndrome</span> due to <span class='extraction-highlight' data-field='gene_symbol' data-confidence='0.89'>MT-ATP6</span> <span class='extraction-highlight' data-field='mutation_description' data-confidence='0.87'>c.8993T>G</span> mutation...",
-        "extractions": {
-            "age_of_onset_years": 3,
-            "sex": "male",
-            "diagnosis": "Leigh syndrome",
-            "gene_symbol": "MT-ATP6",
-            "mutation_description": "c.8993T>G"
-        },
-        "spans": [
+    @validation_router.get("/{extraction_id}")
+    async def get_extraction_data(extraction_id: str) -> Dict[str, Any]:
+        """Get extraction data for validation."""
+        return {
+            "extraction_id": extraction_id,
+            "original_text": "Patient is a 3-year-old male with Leigh syndrome due to MT-ATP6 c.8993T>G mutation...",
+            "highlighted_text": "Patient is a <span class='extraction-highlight' data-field='age' data-confidence='0.95'>3-year-old</span> <span class='extraction-highlight' data-field='sex' data-confidence='0.98'>male</span> with <span class='extraction-highlight' data-field='diagnosis' data-confidence='0.92'>Leigh syndrome</span> due to <span class='extraction-highlight' data-field='gene_symbol' data-confidence='0.89'>MT-ATP6</span> <span class='extraction-highlight' data-field='mutation_description' data-confidence='0.87'>c.8993T>G</span> mutation...",
+            "extractions": {
+                "age_of_onset_years": 3,
+                "sex": "male",
+                "diagnosis": "Leigh syndrome",
+                "gene_symbol": "MT-ATP6",
+                "mutation_description": "c.8993T>G"
+            },
+            "spans": [
+                {
+                    "start": 8,
+                    "end": 17,
+                    "text": "3-year-old",
+                    "extraction_type": "demographics",
+                    "field_name": "age_of_onset_years",
+                    "confidence": 0.95
+                },
+                {
+                    "start": 18,
+                    "end": 22,
+                    "text": "male",
+                    "extraction_type": "demographics",
+                    "field_name": "sex",
+                    "confidence": 0.98
+                }
+            ],
+            "confidence_scores": {
+                "age_of_onset_years": 0.95,
+                "sex": 0.98,
+                "diagnosis": 0.92,
+                "gene_symbol": 0.89,
+                "mutation_description": 0.87
+            }
+        }
+
+    @validation_router.post("/{extraction_id}/submit")
+    async def submit_validation(extraction_id: str, validation_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Submit validation results."""
+        return {
+            "extraction_id": extraction_id,
+            "validation_status": validation_data.get("status", "validated"),
+            "validator_notes": validation_data.get("notes", ""),
+            "corrections": validation_data.get("corrections", {}),
+            "submitted_at": utc_now().isoformat()
+        }
+
+    @validation_router.get("/queue")
+    async def get_validation_queue(status: Optional[str] = None) -> Dict[str, Any]:
+        """Get validation queue."""
+        queue_items = [
             {
-                "start": 8,
-                "end": 17,
-                "text": "3-year-old",
-                "extraction_type": "demographics",
-                "field_name": "age_of_onset_years",
-                "confidence": 0.95
+                "extraction_id": "ext-001",
+                "document_title": "Leigh Syndrome Case Report",
+                "extraction_type": "case_report",
+                "confidence_score": 0.87,
+                "status": "pending",
+                "created_at": (utc_now() - timedelta(minutes=30)).isoformat()
             },
             {
-                "start": 18,
-                "end": 22,
-                "text": "male",
-                "extraction_type": "demographics",
-                "field_name": "sex",
-                "confidence": 0.98
+                "extraction_id": "ext-002",
+                "document_title": "Mitochondrial Disorder Analysis",
+                "extraction_type": "research_paper",
+                "confidence_score": 0.92,
+                "status": "pending",
+                "created_at": (utc_now() - timedelta(hours=2)).isoformat()
             }
-        ],
-        "confidence_scores": {
-            "age_of_onset_years": 0.95,
-            "sex": 0.98,
-            "diagnosis": 0.92,
-            "gene_symbol": 0.89,
-            "mutation_description": 0.87
-        }
-    }
-
-@validation_router.post("/{extraction_id}/submit")
-async def submit_validation(extraction_id: str, validation_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Submit validation results."""
-    return {
-        "extraction_id": extraction_id,
-        "validation_status": validation_data.get("status", "validated"),
-        "validator_notes": validation_data.get("notes", ""),
-        "corrections": validation_data.get("corrections", {}),
-        "submitted_at": utc_now().isoformat()
-    }
-
-@validation_router.get("/queue")
-async def get_validation_queue(status: Optional[str] = None) -> Dict[str, Any]:
-    """Get validation queue."""
-    queue_items = [
-        {
-            "extraction_id": "ext-001",
-            "document_title": "Leigh Syndrome Case Report",
-            "extraction_type": "case_report",
-            "confidence_score": 0.87,
-            "status": "pending",
-            "created_at": (utc_now() - timedelta(minutes=30)).isoformat()
-        },
-        {
-            "extraction_id": "ext-002",
-            "document_title": "Mitochondrial Disorder Analysis",
-            "extraction_type": "research_paper",
-            "confidence_score": 0.92,
-            "status": "pending",
-            "created_at": (utc_now() - timedelta(hours=2)).isoformat()
-        }
-    ]
-    
-    if status:
-        queue_items = [item for item in queue_items if item["status"] == status]
-    
-    return {"queue": queue_items}
+        ]
+        
+        if status:
+            queue_items = [item for item in queue_items if item["status"] == status]
+        
+        return {"queue": queue_items}
 
 # ============================================================================
 # Authentication Endpoints
