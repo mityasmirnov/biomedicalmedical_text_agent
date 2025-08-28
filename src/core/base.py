@@ -53,6 +53,7 @@ class ProcessingResult(Generic[T]):
     metadata: Dict[str, Any] = field(default_factory=dict)
     processing_time: Optional[float] = None
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    confidence_score: Optional[float] = None
     
     def add_warning(self, warning: str) -> None:
         """Add a warning message."""

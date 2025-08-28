@@ -6,7 +6,7 @@ import sqlite3
 import json
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from pathlib import Path
 import logging
 from dataclasses import dataclass, asdict
@@ -323,6 +323,44 @@ class APIUsageTracker:
         except Exception as e:
             log.error(f"Failed to export usage data: {e}")
             return False
+    
+    async def get_current_usage(self) -> Dict[str, Any]:
+        """Get current API usage statistics."""
+        try:
+            with sqlite3.connect(self.database_path) as conn:
+                cursor = conn.cursor()
+                
+                # Get current usage by provider
+                cursor.execute("""
+                    SELECT api_provider, COUNT(*) as count, SUM(cost) as total_cost
+                    FROM api_usage 
+                    GROUP BY api_provider
+                """)
+                provider_usage = {}
+                for row in cursor.fetchall():
+                    provider_usage[row[0]] = {
+                        'requests': row[1],
+                        'total_cost': row[2] or 0.0
+                    }
+                
+                # Get requests in the last minute
+                minute_ago = (datetime.now() - timedelta(minutes=1)).timestamp()
+                cursor.execute("SELECT COUNT(*) FROM api_usage WHERE timestamp >= ?", (minute_ago,))
+                requests_per_minute = cursor.fetchone()[0]
+                
+                return {
+                    'providers': provider_usage,
+                    'requests_per_minute': requests_per_minute,
+                    'total_requests': sum(p['requests'] for p in provider_usage.values())
+                }
+                
+        except Exception as e:
+            log.error(f"Failed to get current usage: {e}")
+            return {
+                'providers': {},
+                'requests_per_minute': 0,
+                'total_requests': 0
+            }
     
     def get_usage_summary(self) -> Dict[str, any]:
         """Get a comprehensive usage summary."""
