@@ -154,7 +154,7 @@ class EnhancedRelationshipsSchema:
 class EnhancedSQLiteManager:
     """Enhanced SQLite manager with advanced features for linked data storage."""
     
-    def __init__(self, db_path: str = "enhanced_biomedical_agent.db"):
+    def __init__(self, db_path: str = "data/database/enhanced_biomedical_agent.db"):
         """Initialize the enhanced SQLite manager."""
         self.db_path = db_path
         self.connection = None
@@ -163,7 +163,7 @@ class EnhancedSQLiteManager:
         self._initialize_database()
         
         # Initialize the original SQLite manager for compatibility
-        self.original_manager = SQLiteManager(db_path.replace("enhanced_", ""))
+        self.original_manager = SQLiteManager()
     
     def _initialize_database(self):
         """Initialize the enhanced database with all schemas."""
