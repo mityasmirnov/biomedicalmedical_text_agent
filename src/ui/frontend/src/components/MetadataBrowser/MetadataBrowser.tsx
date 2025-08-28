@@ -36,7 +36,7 @@ import {
   Link as LinkIcon,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
-import { metadataAPI } from '../../services/api';
+import { api } from '../../services/api';
 
 const MetadataBrowser: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,7 +49,7 @@ const MetadataBrowser: React.FC = () => {
   // Fetch metadata overview
   const { data: metadataOverview, isLoading: overviewLoading } = useQuery({
     queryKey: ['metadata-overview'],
-    queryFn: () => metadataAPI.getMetadataOverview(),
+            queryFn: () => api.metadata.getAll(),
   });
 
   // Extract data from API response
@@ -58,9 +58,9 @@ const MetadataBrowser: React.FC = () => {
   // Fetch collection documents
   const { data: collectionData, isLoading: collectionLoading } = useQuery({
     queryKey: ['collection-documents', selectedCollection, page],
-    queryFn: () => selectedCollection ? 
-      metadataAPI.getCollectionDocuments(selectedCollection, pageSize, (page - 1) * pageSize) : 
-      null,
+            queryFn: () => selectedCollection ? 
+            api.metadata.getById(selectedCollection) :
+            null,
     enabled: !!selectedCollection,
   });
 
@@ -70,7 +70,7 @@ const MetadataBrowser: React.FC = () => {
   // Search metadata
   const { data: searchResults, isLoading: searchLoading } = useQuery({
     queryKey: ['metadata-search', searchQuery],
-    queryFn: () => searchQuery ? metadataAPI.searchMetadata(searchQuery) : null,
+            queryFn: () => searchQuery ? api.metadata.search({ query: searchQuery }) : null,
     enabled: !!searchQuery,
   });
 

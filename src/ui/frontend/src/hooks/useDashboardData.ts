@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { dashboardAPI } from '../services/api';
+import { api } from '../services/api';
 
 export const useDashboardData = () => {
   const { 
@@ -9,7 +9,7 @@ export const useDashboardData = () => {
     refetch: refetchOverview 
   } = useQuery({
     queryKey: ['dashboardOverview'],
-    queryFn: dashboardAPI.getOverview
+    queryFn: () => api.dashboard.getSystemStatus()
   });
 
   const { 
@@ -19,7 +19,7 @@ export const useDashboardData = () => {
     refetch: refetchStatistics 
   } = useQuery({
     queryKey: ['dashboardStatistics'],
-    queryFn: dashboardAPI.getStatistics
+    queryFn: () => api.dashboard.getRecentResults()
   });
 
   const { 
@@ -29,7 +29,7 @@ export const useDashboardData = () => {
     refetch: refetchSystemStatus 
   } = useQuery({
     queryKey: ['dashboardSystemStatus'],
-    queryFn: dashboardAPI.getSystemStatus
+    queryFn: () => api.dashboard.getSystemStatus()
   });
 
   const { 
@@ -39,7 +39,7 @@ export const useDashboardData = () => {
     refetch: refetchRecentActivities 
   } = useQuery({
     queryKey: ['dashboardRecentActivities'],
-    queryFn: dashboardAPI.getRecentActivities
+    queryFn: () => api.dashboard.getProcessingQueue()
   });
 
   const { 
@@ -49,7 +49,7 @@ export const useDashboardData = () => {
     refetch: refetchAlerts 
   } = useQuery({
     queryKey: ['dashboardAlerts'],
-    queryFn: dashboardAPI.getAlerts
+    queryFn: () => api.dashboard.getSystemStatus()
   });
 
   const refetchAll = () => {

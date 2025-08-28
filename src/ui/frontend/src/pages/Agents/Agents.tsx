@@ -44,7 +44,7 @@ import {
   Assessment as AssessmentIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { agentsAPI } from '../../services/api';
+import { api } from '../../services/api';
 
 const Agents: React.FC = () => {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
@@ -55,19 +55,19 @@ const Agents: React.FC = () => {
   // Fetch real agents data
   const { data: agentsData, isLoading, error, refetch } = useQuery({
     queryKey: ['agents'],
-    queryFn: () => agentsAPI.getAgents(),
+            queryFn: () => api.agents.getAll(),
   });
 
   // Mutations for agent control
   const startAgentMutation = useMutation({
-    mutationFn: (agentId: string) => agentsAPI.startAgent(agentId),
+            mutationFn: (agentId: string) => api.agents.start(agentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
     },
   });
 
   const stopAgentMutation = useMutation({
-    mutationFn: (agentId: string) => agentsAPI.stopAgent(agentId),
+            mutationFn: (agentId: string) => api.agents.stop(agentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
     },

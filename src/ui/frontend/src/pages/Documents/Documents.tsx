@@ -52,7 +52,7 @@ import {
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { documentsAPI } from '../../services/api';
+import { api } from '../../services/api';
 
 const Documents: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,7 +65,7 @@ const Documents: React.FC = () => {
   // Fetch real documents data
   const { data: documentsData, isLoading, error, refetch } = useQuery({
     queryKey: ['documents'],
-    queryFn: () => documentsAPI.getDocuments(),
+            queryFn: () => api.documents.getAll(),
   });
 
   // Extract documents from API response

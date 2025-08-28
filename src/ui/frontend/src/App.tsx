@@ -17,6 +17,13 @@ import Monitoring from './pages/Monitoring/Monitoring';
 import Settings from './pages/Settings/Settings';
 import Login from './pages/Auth/Login';
 
+// New Components
+import MetadataManager from './pages/KnowledgeBase/MetadataManager';
+import APIManager from './pages/Settings/APIManager';
+import PromptManager from './pages/Settings/PromptManager';
+import DataVisualization from './pages/Analytics/DataVisualization';
+import DocumentManager from './pages/Documents/DocumentManager';
+
 // Contexts
 import { AuthProvider } from './contexts/AuthContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
@@ -152,12 +159,17 @@ const AppContent: React.FC = () => {
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/knowledge-base/*" element={<KnowledgeBase />} />
+                    <Route path="/knowledge-base/metadata" element={<MetadataManager />} />
                     <Route path="/database/*" element={<Database />} />
                     <Route path="/agents/*" element={<Agents />} />
                     <Route path="/documents/*" element={<Documents />} />
+                    <Route path="/documents/manage" element={<DocumentManager />} />
                     <Route path="/validation/*" element={<Validation />} />
                     <Route path="/monitoring/*" element={<Monitoring />} />
+                    <Route path="/analytics" element={<DataVisualization />} />
                     <Route path="/settings/*" element={<Settings />} />
+                    <Route path="/settings/api" element={<APIManager />} />
+                    <Route path="/settings/prompts" element={<PromptManager />} />
                   </Routes>
                 </Layout>
               </WebSocketProvider>

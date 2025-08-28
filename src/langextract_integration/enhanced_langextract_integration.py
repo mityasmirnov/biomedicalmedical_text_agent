@@ -584,4 +584,3 @@ async def test_enhanced_langextract():
 if __name__ == "__main__":
     # Run test
     asyncio.run(test_enhanced_langextract())
-
