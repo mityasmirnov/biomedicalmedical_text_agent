@@ -273,14 +273,27 @@ class SystemManager:
             # Display system information
             self.display_system_info()
             
+            # Wait for server to fully initialize before health monitoring
+            logger.info("\n⏳ Waiting for server to fully initialize...")
+            await asyncio.sleep(5)  # Wait 5 seconds for server to be ready
+            
             # Monitor system health
             logger.info("\n🔍 Monitoring system health...")
             while True:
                 health = self.check_system_health()
-                if health.get("backend", {}).get("status") == "healthy":
+                
+                # Check backend health
+                backend_health = health.get("backend", {})
+                frontend_health = health.get("frontend", {})
+                
+                if backend_health.get("status") == "healthy" and frontend_health.get("status") == "healthy":
                     logger.info("✅ System running normally")
                 else:
                     logger.warning("⚠️  System health issues detected")
+                    if backend_health.get("status") != "healthy":
+                        logger.warning(f"   • Backend: {backend_health.get('status', 'unknown')} - {backend_health.get('error', 'No error details')}")
+                    if frontend_health.get("status") != "healthy":
+                        logger.warning(f"   • Frontend: {frontend_health.get('status', 'unknown')} - {frontend_health.get('error', 'No error details')}")
                 
                 await asyncio.sleep(30)  # Check every 30 seconds
                 
