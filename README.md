@@ -65,30 +65,46 @@ The Biomedical Text Agent is designed to bridge the gap between **published medi
 
 ## 🚀 **Quick Start**
 
-### **1. Start the System**
+### **1. Start the Enhanced System**
 ```bash
 # Activate virtual environment
 source venv/bin/activate
 
-# Start unified system
+# Start enhanced system demonstration
+python start_enhanced_system.py demo
+
+# Start enhanced system server
+python start_enhanced_system.py server
+
+# Start unified system (legacy)
 python start_unified_system.py
 
-# Or use the main CLI
-python src/main.py
+# Start standalone server
+python standalone_server.py
 ```
 
 ### **2. Access the System**
-- **🌐 Frontend**: http://127.0.0.1:8000/
+- **🌐 Enhanced Frontend**: http://127.0.0.0:8001/ (when using enhanced server)
+- **🌐 Legacy Frontend**: http://127.0.0.1:8000/ (when using unified system)
 - **📚 API Docs**: http://127.0.0.1:8000/api/docs
 - **💚 Health Check**: http://127.0.0.1:8000/api/health
 
 ### **3. Test the System**
 ```bash
+# Run enhanced system demonstration
+python start_enhanced_system.py demo
+
 # Run comprehensive system test
 python test_system.py
 
-# Check system configuration
-python src/main.py --check
+# Test enhanced metadata triage
+python test_enhanced_metadata_triage.py
+
+# Test standalone metadata triage
+python test_standalone_metadata_triage.py
+
+# Run Leigh syndrome search demo
+python demo_leigh_syndrome_search.py
 ```
 
 ## 🔬 **Biological & Medical Applications**
@@ -114,30 +130,45 @@ python src/main.py --check
 
 ```
 biomedicalmedical_text_agent/
-├── 🚀 start_unified_system.py    # Main entry point
-├── 🧪 test_system.py             # Comprehensive system test
-├── 📚 src/                       # Core system source code
-├── 🧪 tests/                     # Comprehensive test suite
-├── 📖 docs/                      # Project documentation
-├── 🛠️ scripts/                   # Utility scripts & demos
-├── 📊 data/                      # Data storage & samples
-├── 🌐 venv/                      # Python virtual environment
-└── 📋 Configuration files        # Requirements, setup, env
+├── 🚀 start_enhanced_system.py      # Enhanced system entry point (RECOMMENDED)
+├── 🚀 start_unified_system.py       # Legacy unified system entry point
+├── 🖥️ standalone_server.py           # Standalone API server
+├── 🧪 test_system.py                # Comprehensive system test
+├── 🧪 test_enhanced_metadata_triage.py    # Enhanced metadata triage tests
+├── 🧪 test_standalone_metadata_triage.py  # Standalone metadata triage tests
+├── 🎯 demo_enhanced_metadata_triage.py    # Enhanced metadata triage demo
+├── 🎯 demo_leigh_syndrome_search.py       # Leigh syndrome search demo
+├── 📚 src/                          # Core system source code
+├── 🧪 tests/                        # Comprehensive test suite
+├── 📖 docs/                         # Project documentation
+├── 🛠️ scripts/                      # Utility scripts & demos
+├── 📊 data/                         # Data storage & samples
+├── 🌐 venv/                         # Python virtual environment
+└── 📋 Configuration files           # Requirements, setup, env
 ```
 
 ## 🧪 **Testing**
 
 ```bash
+# Run enhanced system demonstration (RECOMMENDED)
+python start_enhanced_system.py demo
+
 # Run comprehensive system test
 python test_system.py
+
+# Test enhanced metadata triage
+python test_enhanced_metadata_triage.py
+
+# Test standalone metadata triage
+python test_standalone_metadata_triage.py
+
+# Run Leigh syndrome search demo
+python demo_leigh_syndrome_search.py
 
 # Run specific test categories
 pytest tests/unit/ -v          # Component tests
 pytest tests/integration/ -v   # Integration tests
 pytest tests/e2e/ -v          # End-to-end tests
-
-# Check system configuration
-python src/main.py --check
 ```
 
 ## 🔧 **Development Setup**
@@ -160,11 +191,31 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Test installation
+# Install additional required packages
+pip install langextract
+
+# Test enhanced system (RECOMMENDED)
+python start_enhanced_system.py demo
+
+# Test legacy system
 python test_system.py
 ```
 
-## 📊 **System Capabilities**
+## 🚀 **Enhanced System Features (Currently Working)**
+
+The enhanced system has been successfully integrated and tested with the following working features:
+
+| **Feature** | **Status** | **Description** | **Medical Use Case** |
+|-------------|------------|-----------------|----------------------|
+| **Enhanced Document Management** | ✅ Working | Create, store, and manage biomedical documents | Clinical data organization |
+| **Enhanced Extraction Pipeline** | ✅ Working | AI-powered extraction with LangExtract integration | Patient data extraction |
+| **Enhanced Analytics** | ✅ Working | Comprehensive metrics and performance tracking | Research analytics |
+| **Enhanced Relationships** | ✅ Working | Entity relationship mapping and analysis | Clinical correlation analysis |
+| **Enhanced Search** | ✅ Working | Advanced document search with filtering | Literature discovery |
+| **Enhanced Database** | ✅ Working | SQLite with enhanced schemas and performance | Data storage and retrieval |
+| **Enhanced Pipeline** | ✅ Working | Asynchronous processing with worker management | Scalable data processing |
+
+## 📊 **Legacy System Capabilities**
 
 | **Feature** | **Description** | **Medical Use Case** |
 |-------------|-----------------|----------------------|
@@ -175,43 +226,65 @@ python test_system.py
 | **Treatment Analysis** | Medication & therapy extraction | Treatment pattern identification |
 | **RAG System** | Intelligent question answering | Clinical decision support, research queries |
 
+## 🎯 **Current System Status**
+
+### **Recent Accomplishments**
+- ✅ **Successfully merged all enhanced feature branches** from Cursor development
+- ✅ **Integrated enhanced metadata orchestrator** with PubMed client synchronization
+- ✅ **Added comprehensive UI components** (APIManager, EnhancedDashboard, DataVisualization, etc.)
+- ✅ **Enhanced backend API structure** for UI integration
+- ✅ **Integrated enhanced LangExtract** with UI support and validation interface
+- ✅ **Fixed all async context manager issues** for database compatibility
+- ✅ **System fully functional** with enhanced processing pipeline
+
+### **System Architecture**
+The enhanced system now includes:
+- **Enhanced Metadata Orchestrator**: Advanced pipeline management with async workers
+- **Enhanced SQLite Manager**: Comprehensive database with enhanced schemas
+- **Enhanced LangExtract Integration**: AI-powered extraction with UI support
+- **Enhanced API Endpoints**: RESTful API with proper request/response models
+- **Enhanced Processing Pipeline**: Asynchronous task processing with monitoring
+
 ## 💻 **Usage Examples**
 
 ### **Command Line Interface**
 
-The system provides a comprehensive CLI for common tasks:
+The system provides multiple entry points for different use cases:
 
-#### **Data Extraction**
+#### **Enhanced System (RECOMMENDED)**
 ```bash
-# Single document extraction
-python src/main.py extract --file document.pdf --output results.csv
+# Run enhanced system demonstration
+python start_enhanced_system.py demo
 
-# Batch processing
-python src/main.py batch --input-dir papers/ --output batch_results.csv --workers 8
+# Start enhanced system server
+python start_enhanced_system.py server
 
-# With custom output format
-python src/main.py extract --file document.pdf --output results.json --format json
+# Test enhanced metadata triage
+python test_enhanced_metadata_triage.py
 ```
 
-#### **Database Operations**
+#### **Legacy System**
 ```bash
-# View database statistics
-python src/main.py db stats
+# Start unified system
+python start_unified_system.py
 
-# Search records
-python src/main.py db search --query "SURF1 mutation" --limit 20
+# Start standalone server
+python standalone_server.py
 
-# Export data
-python src/main.py db export --output all_records.csv
+# Run comprehensive tests
+python test_system.py
 ```
 
-#### **RAG Question Answering**
+#### **Demo Scripts**
 ```bash
-# Ask specific questions
-python src/main.py rag --question "What genes cause Leigh syndrome?"
+# Leigh syndrome search demo
+python demo_leigh_syndrome_search.py
 
-# Interactive mode
-python src/main.py rag --interactive
+# Enhanced metadata triage demo
+python demo_enhanced_metadata_triage.py
+
+# Standalone metadata triage demo
+python test_standalone_metadata_triage.py
 ```
 
 ### **Python API Usage**

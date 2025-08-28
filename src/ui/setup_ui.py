@@ -131,7 +131,7 @@ class UISetup:
         env_content = """# Backend Configuration
 DEBUG=true
 SECRET_KEY=your-secret-key-change-in-production
-DATABASE_URL=sqlite:///./biomedical_agent.db
+DATABASE_URL=sqlite:///./data/database/biomedical_agent.db
 REDIS_URL=redis://localhost:6379/0
 
 # CORS Settings
@@ -206,7 +206,7 @@ from pathlib import Path
 
 async def init_database():
     """Initialize SQLite database with required tables."""
-    db_path = Path("biomedical_agent.db")
+    db_path = Path("data/database/biomedical_agent.db")
     
     # Create database connection
     conn = sqlite3.connect(db_path)
