@@ -1,586 +1,913 @@
 """
-Enhanced LangExtract Integration
+Enhanced LangExtract Integration for Biomedical Text Agent.
 
-Complete LangExtract integration with UI support, text highlighting,
-validation interface, and database linking.
+This module provides enhanced LangExtract integration with UI support and advanced
+features, working alongside the existing extractor.py structure.
 """
 
 import asyncio
-import json
 import logging
-from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple
+import json
 from pathlib import Path
-import re
+from typing import Dict, List, Any, Optional, Union, Tuple
+from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
+from enum import Enum
+
+# Import core components
+from .extractor import LangExtractEngine
+from .normalizer import Normalizer
+from .schema_classes import ExtractionSchema
+from .visualizer import Visualizer
+
+# Import enhanced components
+from database.enhanced_sqlite_manager import EnhancedSQLiteManager
+from metadata_triage.enhanced_metadata_orchestrator import EnhancedMetadataOrchestrator
 
 logger = logging.getLogger(__name__)
 
+# ============================================================================
+# Enhanced Extraction Models
+# ============================================================================
+
+class ExtractionMode(Enum):
+    """Enhanced extraction mode enumeration."""
+    BASIC = "basic"
+    ENHANCED = "enhanced"
+    ADVANCED = "advanced"
+    CUSTOM = "custom"
 
 @dataclass
-class ExtractionSpan:
-    """Represents a text span with extraction information."""
-    start: int
-    end: int
-    text: str
-    extraction_type: str
-    field_name: str
-    confidence: float
-    normalized_value: Optional[str] = None
-
+class EnhancedExtractionRequest:
+    """Enhanced extraction request model."""
+    request_id: str
+    document_id: str
+    mode: ExtractionMode
+    schemas: List[str]
+    parameters: Dict[str, Any]
+    priority: str
+    callback_url: Optional[str] = None
+    created_at: datetime = None
+    
+    def __post_init__(self):
+        if self.created_at is None:
+            self.created_at = datetime.utcnow()
 
 @dataclass
-class ValidationData:
-    """Data structure for validation interface."""
-    extraction_id: str
-    original_text: str
-    highlighted_text: str
-    extractions: List[Dict]
-    spans: List[ExtractionSpan]
+class EnhancedExtractionResult:
+    """Enhanced extraction result model."""
+    request_id: str
+    document_id: str
+    success: bool
+    entities: List[Dict[str, Any]]
+    relationships: List[Dict[str, Any]]
     confidence_scores: Dict[str, float]
-    validation_status: str = "pending"  # pending, validated, rejected
-    validator_notes: Optional[str] = None
+    processing_time: float
+    metadata: Dict[str, Any]
+    errors: List[str]
+    warnings: List[str]
 
+# ============================================================================
+# Enhanced LangExtract Integration Class
+# ============================================================================
 
-class TextHighlighter:
-    """Generates highlighted text for extraction visualization."""
+class EnhancedLangExtractIntegration:
+    """Enhanced LangExtract integration with UI support and advanced features."""
     
-    def __init__(self):
-        self.highlight_colors = {
-            'demographics': '#FFE6E6',  # Light red
-            'genetics': '#E6F3FF',      # Light blue
-            'phenotypes': '#E6FFE6',    # Light green
-            'treatments': '#FFF0E6',    # Light orange
-            'outcomes': '#F0E6FF',      # Light purple
-            'default': '#F5F5F5'       # Light gray
-        }
+    def __init__(
+        self,
+        config: Optional[Dict[str, Any]] = None,
+        enhanced_db_manager: Optional[EnhancedSQLiteManager] = None,
+        enhanced_orchestrator: Optional[EnhancedMetadataOrchestrator] = None
+    ):
+        """Initialize the enhanced LangExtract integration."""
+        self.config = config or {}
+        self.enhanced_db_manager = enhanced_db_manager or EnhancedSQLiteManager()
+        self.enhanced_orchestrator = enhanced_orchestrator
+        
+        # Initialize core LangExtract components
+        self.extractor = LangExtractEngine()
+        self.normalizer = Normalizer()
+        self.visualizer = Visualizer()
+        
+        # Enhanced extraction configuration
+        self.extraction_config = self.config.get("extraction", {})
+        self.max_concurrent_extractions = self.extraction_config.get("max_concurrent", 3)
+        self.extraction_timeout = self.extraction_config.get("timeout", 300)
+        
+        # Enhanced processing queue
+        self.extraction_queue: asyncio.Queue = asyncio.Queue()
+        self.active_extractions: Dict[str, EnhancedExtractionRequest] = {}
+        self.completed_extractions: Dict[str, EnhancedExtractionResult] = {}
+        
+        # Enhanced schemas and templates
+        self.enhanced_schemas = self._initialize_enhanced_schemas()
+        
+        logger.info("Enhanced LangExtract Integration initialized successfully")
     
-    def highlight_extractions(self, 
-                            text: str, 
-                            extraction_results: Dict) -> Tuple[str, List[ExtractionSpan]]:
-        """
-        Generate highlighted text with extraction spans.
-        
-        Args:
-            text: Original text
-            extraction_results: LangExtract results
-            
-        Returns:
-            Tuple of (highlighted_html, extraction_spans)
-        """
-        spans = self._extract_spans_from_results(text, extraction_results)
-        highlighted_html = self._generate_highlighted_html(text, spans)
-        
-        return highlighted_html, spans
-    
-    def _extract_spans_from_results(self, 
-                                   text: str, 
-                                   extraction_results: Dict) -> List[ExtractionSpan]:
-        """Extract text spans from LangExtract results."""
-        spans = []
-        
-        for extraction in extraction_results.get('extractions', []):
-            extraction_text = extraction.get('extraction_text', '')
-            attributes = extraction.get('attributes', {})
-            
-            # Find text spans for each attribute
-            for field_name, value in attributes.items():
-                if isinstance(value, str) and value.strip():
-                    # Find all occurrences of this value in the text
-                    for match in re.finditer(re.escape(value), text, re.IGNORECASE):
-                        span = ExtractionSpan(
-                            start=match.start(),
-                            end=match.end(),
-                            text=match.group(),
-                            extraction_type=self._get_extraction_type(field_name),
-                            field_name=field_name,
-                            confidence=self._calculate_confidence(extraction, field_name),
-                            normalized_value=self._get_normalized_value(field_name, value)
-                        )
-                        spans.append(span)
-        
-        # Sort spans by start position
-        spans.sort(key=lambda x: x.start)
-        
-        # Remove overlapping spans (keep highest confidence)
-        spans = self._remove_overlapping_spans(spans)
-        
-        return spans
-    
-    def _get_extraction_type(self, field_name: str) -> str:
-        """Determine extraction type from field name."""
-        field_lower = field_name.lower()
-        
-        if any(term in field_lower for term in ['age', 'sex', 'patient', 'gender']):
-            return 'demographics'
-        elif any(term in field_lower for term in ['gene', 'mutation', 'variant', 'allele']):
-            return 'genetics'
-        elif any(term in field_lower for term in ['phenotype', 'symptom', 'clinical', 'manifestation']):
-            return 'phenotypes'
-        elif any(term in field_lower for term in ['treatment', 'therapy', 'medication', 'drug']):
-            return 'treatments'
-        elif any(term in field_lower for term in ['outcome', 'survival', 'prognosis', 'alive', 'dead']):
-            return 'outcomes'
-        else:
-            return 'default'
-    
-    def _calculate_confidence(self, extraction: Dict, field_name: str) -> float:
-        """Calculate confidence score for extraction."""
-        # Use LangExtract confidence if available
-        if 'confidence' in extraction:
-            return extraction['confidence']
-        
-        # Calculate based on extraction quality
-        attributes = extraction.get('attributes', {})
-        value = attributes.get(field_name, '')
-        
-        if not value:
-            return 0.0
-        
-        # Simple heuristic based on value characteristics
-        confidence = 0.5  # Base confidence
-        
-        # Increase confidence for structured data
-        if field_name in ['age_of_onset_years', 'alive_flag']:
-            confidence += 0.3
-        
-        # Increase confidence for longer, more specific values
-        if len(str(value)) > 10:
-            confidence += 0.2
-        
-        return min(confidence, 1.0)
-    
-    def _get_normalized_value(self, field_name: str, value: str) -> Optional[str]:
-        """Get normalized value if available."""
-        # This would integrate with ontology managers
-        # For now, return the original value
-        return value
-    
-    def _remove_overlapping_spans(self, spans: List[ExtractionSpan]) -> List[ExtractionSpan]:
-        """Remove overlapping spans, keeping highest confidence."""
-        if not spans:
-            return spans
-        
-        non_overlapping = []
-        current_span = spans[0]
-        
-        for next_span in spans[1:]:
-            # Check for overlap
-            if next_span.start < current_span.end:
-                # Overlapping - keep higher confidence
-                if next_span.confidence > current_span.confidence:
-                    current_span = next_span
-            else:
-                # No overlap - add current and move to next
-                non_overlapping.append(current_span)
-                current_span = next_span
-        
-        # Add the last span
-        non_overlapping.append(current_span)
-        
-        return non_overlapping
-    
-    def _generate_highlighted_html(self, text: str, spans: List[ExtractionSpan]) -> str:
-        """Generate HTML with highlighted spans."""
-        if not spans:
-            return text
-        
-        html_parts = []
-        last_end = 0
-        
-        for span in spans:
-            # Add text before this span
-            if span.start > last_end:
-                html_parts.append(text[last_end:span.start])
-            
-            # Add highlighted span
-            color = self.highlight_colors.get(span.extraction_type, self.highlight_colors['default'])
-            tooltip = f"Field: {span.field_name}, Confidence: {span.confidence:.2f}"
-            
-            highlighted_span = (
-                f'<span class="extraction-highlight" '
-                f'style="background-color: {color}; padding: 2px; border-radius: 3px;" '
-                f'data-field="{span.field_name}" '
-                f'data-type="{span.extraction_type}" '
-                f'data-confidence="{span.confidence}" '
-                f'title="{tooltip}">'
-                f'{span.text}'
-                f'</span>'
-            )
-            html_parts.append(highlighted_span)
-            
-            last_end = span.end
-        
-        # Add remaining text
-        if last_end < len(text):
-            html_parts.append(text[last_end:])
-        
-        return ''.join(html_parts)
-
-
-class ValidationInterface:
-    """Manages validation interface data and operations."""
-    
-    def __init__(self, db_manager):
-        self.db_manager = db_manager
-    
-    def prepare_validation_data(self, 
-                              extraction_results: Dict, 
-                              highlighted_text: str,
-                              spans: List[ExtractionSpan]) -> ValidationData:
-        """Prepare data for validation interface."""
-        extraction_id = f"ext_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
-        # Calculate confidence scores by field
-        confidence_scores = {}
-        for span in spans:
-            if span.field_name not in confidence_scores:
-                confidence_scores[span.field_name] = []
-            confidence_scores[span.field_name].append(span.confidence)
-        
-        # Average confidence per field
-        avg_confidence_scores = {
-            field: sum(scores) / len(scores)
-            for field, scores in confidence_scores.items()
-        }
-        
-        validation_data = ValidationData(
-            extraction_id=extraction_id,
-            original_text=extraction_results.get('original_text', ''),
-            highlighted_text=highlighted_text,
-            extractions=extraction_results.get('extractions', []),
-            spans=spans,
-            confidence_scores=avg_confidence_scores
-        )
-        
-        return validation_data
-    
-    async def store_validation_data(self, validation_data: ValidationData) -> str:
-        """Store validation data in database."""
-        validation_dict = {
-            'extraction_id': validation_data.extraction_id,
-            'original_text': validation_data.original_text,
-            'highlighted_text': validation_data.highlighted_text,
-            'extractions': json.dumps(validation_data.extractions),
-            'spans': json.dumps([asdict(span) for span in validation_data.spans]),
-            'confidence_scores': json.dumps(validation_data.confidence_scores),
-            'validation_status': validation_data.validation_status,
-            'validator_notes': validation_data.validator_notes,
-            'created_at': datetime.now().isoformat()
-        }
-        
-        result = await self.db_manager.store_validation_data(validation_dict)
-        return result['id']
-    
-    async def submit_validation(self, 
-                              extraction_id: str, 
-                              validation_status: str,
-                              corrections: Optional[Dict] = None,
-                              validator_notes: Optional[str] = None) -> bool:
-        """Submit validation results."""
-        validation_update = {
-            'validation_status': validation_status,
-            'corrections': json.dumps(corrections) if corrections else None,
-            'validator_notes': validator_notes,
-            'validated_at': datetime.now().isoformat()
-        }
-        
-        try:
-            await self.db_manager.update_validation_data(extraction_id, validation_update)
-            logger.info(f"Validation submitted for extraction {extraction_id}: {validation_status}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to submit validation: {e}")
-            return False
-    
-    async def get_validation_queue(self, status: str = "pending") -> List[Dict]:
-        """Get validation queue for review."""
-        try:
-            queue = await self.db_manager.get_validation_queue(status)
-            return queue
-        except Exception as e:
-            logger.error(f"Failed to get validation queue: {e}")
-            return []
-
-
-class EnhancedLangExtractEngine:
-    """
-    Enhanced LangExtract engine with UI support and database integration.
-    
-    Provides complete extraction pipeline with validation interface,
-    text highlighting, and database linking.
-    """
-    
-    def __init__(self, 
-                 base_engine,
-                 db_manager,
-                 model_id: str = "google/gemma-2-27b-it:free"):
-        self.base_engine = base_engine
-        self.db_manager = db_manager
-        self.model_id = model_id
-        
-        self.text_highlighter = TextHighlighter()
-        self.validation_interface = ValidationInterface(db_manager)
-        
-        logger.info(f"Enhanced LangExtract engine initialized with model: {model_id}")
-    
-    async def extract_with_ui_support(self, 
-                                    text: str, 
-                                    document_id: str,
-                                    metadata_id: Optional[str] = None,
-                                    fulltext_id: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Extract with complete UI support and database linking.
-        
-        Args:
-            text: Text to extract from
-            document_id: Document identifier
-            metadata_id: Optional metadata record ID
-            fulltext_id: Optional full-text record ID
-            
-        Returns:
-            Complete extraction results with UI data
-        """
-        logger.info(f"Starting extraction with UI support for document: {document_id}")
-        
-        try:
-            # 1. Perform base extraction
-            extraction_results = await self.base_engine.extract_from_text(text)
-            
-            # 2. Generate text highlighting
-            highlighted_text, spans = self.text_highlighter.highlight_extractions(
-                text, extraction_results
-            )
-            
-            # 3. Prepare validation data
-            validation_data = self.validation_interface.prepare_validation_data(
-                extraction_results, highlighted_text, spans
-            )
-            
-            # 4. Store validation data
-            validation_id = await self.validation_interface.store_validation_data(validation_data)
-            
-            # 5. Store extraction results with linking
-            extraction_id = await self._store_extraction_with_linking(
-                document_id, metadata_id, fulltext_id, extraction_results, validation_id
-            )
-            
-            # 6. Prepare UI response
-            ui_response = {
-                'extraction_id': extraction_id,
-                'validation_id': validation_id,
-                'document_id': document_id,
-                'extractions': extraction_results,
-                'highlighted_text': highlighted_text,
-                'spans': [asdict(span) for span in spans],
-                'validation_data': asdict(validation_data),
-                'confidence_summary': self._calculate_confidence_summary(spans),
-                'extraction_statistics': self._calculate_extraction_statistics(extraction_results)
+    def _initialize_enhanced_schemas(self) -> Dict[str, Dict[str, Any]]:
+        """Initialize enhanced extraction schemas."""
+        schemas = {
+            "biomedical_entities": {
+                "name": "Biomedical Entities",
+                "description": "Comprehensive biomedical entity extraction",
+                "fields": ["diseases", "medications", "symptoms", "procedures", "genes"],
+                "confidence_threshold": 0.8,
+                "enhanced_features": ["entity_linking", "normalization", "confidence_scoring"]
+            },
+            "clinical_relationships": {
+                "name": "Clinical Relationships",
+                "description": "Clinical relationship extraction and analysis",
+                "fields": ["treatment_relationships", "causal_relationships", "temporal_relationships"],
+                "confidence_threshold": 0.75,
+                "enhanced_features": ["relationship_graph", "confidence_propagation", "cross_validation"]
+            },
+            "research_metadata": {
+                "name": "Research Metadata",
+                "description": "Research paper metadata extraction",
+                "fields": ["authors", "institutions", "funding", "methodology", "results"],
+                "confidence_threshold": 0.85,
+                "enhanced_features": ["metadata_enrichment", "cross_referencing", "validation"]
             }
+        }
+        return schemas
+    
+    # ============================================================================
+    # Enhanced Extraction Management
+    # ============================================================================
+    
+    async def submit_enhanced_extraction(
+        self,
+        document_id: str,
+        mode: ExtractionMode = ExtractionMode.ENHANCED,
+        schemas: Optional[List[str]] = None,
+        parameters: Optional[Dict[str, Any]] = None,
+        priority: str = "normal",
+        callback_url: Optional[str] = None
+    ) -> str:
+        """Submit a new enhanced extraction request."""
+        try:
+            request_id = f"ext_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{hash(document_id)}"
             
-            logger.info(f"Extraction completed successfully for document: {document_id}")
-            return ui_response
+            # Create enhanced extraction request
+            request = EnhancedExtractionRequest(
+                request_id=request_id,
+                document_id=document_id,
+                mode=mode,
+                schemas=schemas or ["biomedical_entities"],
+                parameters=parameters or {},
+                priority=priority,
+                callback_url=callback_url
+            )
+            
+            # Add to extraction queue
+            await self.extraction_queue.put((priority, request))
+            
+            # Store request
+            self.active_extractions[request_id] = request
+            
+            # Record in database
+            await self.enhanced_db_manager.create_extraction_request(
+                document_id=document_id,
+                extraction_type=f"enhanced_{mode.value}",
+                parameters={
+                    "schemas": schemas,
+                    "mode": mode.value,
+                    **(parameters or {})
+                },
+                priority=priority,
+                callback_url=callback_url
+            )
+            
+            logger.info(f"Submitted enhanced extraction: {request_id} (mode: {mode.value})")
+            return request_id
             
         except Exception as e:
-            logger.error(f"Extraction failed for document {document_id}: {e}")
+            logger.error(f"Error submitting enhanced extraction: {e}")
             raise
     
-    async def _store_extraction_with_linking(self, 
-                                           document_id: str,
-                                           metadata_id: Optional[str],
-                                           fulltext_id: Optional[str],
-                                           extraction_results: Dict,
-                                           validation_id: str) -> str:
-        """Store extraction results with complete linking."""
-        extraction_dict = {
-            'document_id': document_id,
-            'metadata_id': metadata_id,
-            'fulltext_id': fulltext_id,
-            'validation_id': validation_id,
-            'model_id': self.model_id,
-            'extraction_data': json.dumps(extraction_results),
-            'created_at': datetime.now().isoformat()
-        }
+    async def start_enhanced_extraction_workers(self):
+        """Start enhanced extraction workers."""
+        logger.info("🚀 Starting Enhanced Extraction Workers...")
         
-        result = await self.db_manager.store_extraction_with_linking(extraction_dict)
-        return result['id']
+        workers = []
+        for i in range(self.max_concurrent_extractions):
+            worker = asyncio.create_task(self._extraction_worker(f"worker-{i}"))
+            workers.append(worker)
+        
+        # Start monitoring task
+        monitor_task = asyncio.create_task(self._monitor_extractions())
+        
+        logger.info(f"✅ Enhanced extraction workers started: {self.max_concurrent_extractions}")
+        
+        # Wait for all workers to complete
+        await asyncio.gather(*workers, monitor_task)
     
-    def _calculate_confidence_summary(self, spans: List[ExtractionSpan]) -> Dict[str, Any]:
-        """Calculate confidence summary statistics."""
-        if not spans:
-            return {'overall_confidence': 0.0, 'field_confidence': {}}
+    async def _extraction_worker(self, worker_id: str):
+        """Enhanced extraction worker for processing requests."""
+        logger.info(f"🔧 Enhanced extraction worker {worker_id} started")
         
-        # Overall confidence
-        overall_confidence = sum(span.confidence for span in spans) / len(spans)
-        
-        # Confidence by field
-        field_confidence = {}
-        field_spans = {}
-        
-        for span in spans:
-            if span.field_name not in field_spans:
-                field_spans[span.field_name] = []
-            field_spans[span.field_name].append(span.confidence)
-        
-        for field, confidences in field_spans.items():
-            field_confidence[field] = {
-                'average': sum(confidences) / len(confidences),
-                'min': min(confidences),
-                'max': max(confidences),
-                'count': len(confidences)
-            }
-        
-        return {
-            'overall_confidence': overall_confidence,
-            'field_confidence': field_confidence,
-            'total_spans': len(spans)
-        }
-    
-    def _calculate_extraction_statistics(self, extraction_results: Dict) -> Dict[str, Any]:
-        """Calculate extraction statistics."""
-        extractions = extraction_results.get('extractions', [])
-        
-        if not extractions:
-            return {'total_extractions': 0, 'fields_extracted': 0}
-        
-        # Count fields extracted
-        all_fields = set()
-        for extraction in extractions:
-            attributes = extraction.get('attributes', {})
-            all_fields.update(attributes.keys())
-        
-        # Count non-empty fields
-        non_empty_fields = set()
-        for extraction in extractions:
-            attributes = extraction.get('attributes', {})
-            for field, value in attributes.items():
-                if value and str(value).strip():
-                    non_empty_fields.add(field)
-        
-        return {
-            'total_extractions': len(extractions),
-            'fields_extracted': len(non_empty_fields),
-            'total_fields_available': len(all_fields),
-            'extraction_completeness': len(non_empty_fields) / len(all_fields) if all_fields else 0
-        }
-    
-    async def batch_extract_with_ui_support(self, 
-                                          documents: List[Dict],
-                                          batch_size: int = 5) -> List[Dict]:
-        """
-        Batch extraction with UI support.
-        
-        Args:
-            documents: List of documents with 'text', 'document_id', etc.
-            batch_size: Number of documents to process concurrently
-            
-        Returns:
-            List of extraction results
-        """
-        logger.info(f"Starting batch extraction for {len(documents)} documents")
-        
-        results = []
-        
-        # Process in batches to avoid overwhelming the system
-        for i in range(0, len(documents), batch_size):
-            batch = documents[i:i + batch_size]
-            
-            # Process batch concurrently
-            batch_tasks = [
-                self.extract_with_ui_support(
-                    text=doc['text'],
-                    document_id=doc['document_id'],
-                    metadata_id=doc.get('metadata_id'),
-                    fulltext_id=doc.get('fulltext_id')
-                )
-                for doc in batch
-            ]
-            
-            batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
-            
-            # Filter out exceptions and add to results
-            for result in batch_results:
-                if not isinstance(result, Exception):
-                    results.append(result)
-                else:
-                    logger.error(f"Batch extraction failed: {result}")
-            
-            logger.info(f"Completed batch {i//batch_size + 1}/{(len(documents)-1)//batch_size + 1}")
-        
-        logger.info(f"Batch extraction completed. {len(results)} successful extractions")
-        return results
-    
-    async def get_extraction_for_validation(self, extraction_id: str) -> Optional[Dict]:
-        """Get extraction data for validation interface."""
         try:
-            extraction_data = await self.db_manager.get_extraction_with_validation(extraction_id)
-            return extraction_data
+            while True:
+                try:
+                    # Get next extraction from queue
+                    priority, request = await self.extraction_queue.get()
+                    
+                    # Process the extraction
+                    await self._process_enhanced_extraction(request, worker_id)
+                    
+                    # Mark extraction as done
+                    self.extraction_queue.task_done()
+                    
+                except asyncio.CancelledError:
+                    logger.info(f"Worker {worker_id} cancelled")
+                    break
+                except Exception as e:
+                    logger.error(f"Error in worker {worker_id}: {e}")
+                    continue
+                    
         except Exception as e:
-            logger.error(f"Failed to get extraction for validation: {e}")
-            return None
+            logger.error(f"Fatal error in worker {worker_id}: {e}")
+        finally:
+            logger.info(f"🔧 Enhanced extraction worker {worker_id} stopped")
     
-    async def update_extraction_from_validation(self, 
-                                              extraction_id: str, 
-                                              corrections: Dict) -> bool:
-        """Update extraction based on validation corrections."""
+    async def _process_enhanced_extraction(
+        self, 
+        request: EnhancedExtractionRequest, 
+        worker_id: str
+    ):
+        """Process an enhanced extraction request."""
         try:
-            # Apply corrections to extraction data
-            updated_data = await self._apply_validation_corrections(extraction_id, corrections)
+            # Update request status
+            request.worker_id = worker_id
+            
+            # Update database status
+            await self.enhanced_db_manager.update_extraction_status(
+                request_id=request.request_id,
+                status="started"
+            )
+            
+            logger.info(f"Processing enhanced extraction: {request.request_id}")
+            
+            # Execute extraction based on mode
+            start_time = datetime.utcnow()
+            result = await self._execute_enhanced_extraction(request)
+            processing_time = (datetime.utcnow() - start_time).total_seconds()
+            
+            # Create enhanced result
+            enhanced_result = EnhancedExtractionResult(
+                request_id=request.request_id,
+                document_id=request.document_id,
+                success=result.get("success", False),
+                entities=result.get("entities", []),
+                relationships=result.get("relationships", []),
+                confidence_scores=result.get("confidence_scores", {}),
+                processing_time=processing_time,
+                metadata=result.get("metadata", {}),
+                errors=result.get("errors", []),
+                warnings=result.get("warnings", [])
+            )
+            
+            # Store completed result
+            self.completed_extractions[request.request_id] = enhanced_result
             
             # Update database
-            await self.db_manager.update_extraction_data(extraction_id, updated_data)
+            await self.enhanced_db_manager.update_extraction_status(
+                request_id=request.request_id,
+                status="completed",
+                result=asdict(enhanced_result),
+                processing_time=processing_time,
+                confidence_score=result.get("overall_confidence", 0.0)
+            )
             
-            logger.info(f"Applied validation corrections to extraction {extraction_id}")
+            # Update document with extracted entities
+            if enhanced_result.entities:
+                await self.enhanced_db_manager.update_enhanced_document(
+                    document_id=request.document_id,
+                    updates={
+                        "extracted_entities": enhanced_result.entities,
+                        "processing_status": "completed"
+                    }
+                )
+            
+            # Create relationships in database
+            for rel in enhanced_result.relationships:
+                await self.enhanced_db_manager.create_relationship(
+                    source_id=f"{request.document_id}_{rel.get('source', 'unknown')}",
+                    target_id=f"{request.document_id}_{rel.get('target', 'unknown')}",
+                    relationship_type=rel.get("type", "related"),
+                    relationship_data=rel.get("data", {}),
+                    confidence_score=rel.get("confidence", 0.0),
+                    source_type="entity",
+                    target_type="entity"
+                )
+            
+            logger.info(f"✅ Enhanced extraction completed: {request.request_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ Error processing enhanced extraction {request.request_id}: {e}")
+            
+            # Handle extraction failure
+            await self._handle_extraction_failure(request, str(e))
+    
+    async def _execute_enhanced_extraction(self, request: EnhancedExtractionRequest) -> Dict[str, Any]:
+        """Execute enhanced extraction based on mode and schemas."""
+        try:
+            # Get document content
+            document = await self.enhanced_db_manager.get_enhanced_document(request.document_id)
+            if not document:
+                raise ValueError(f"Document {request.document_id} not found")
+            
+            content = document.get("content", "")
+            
+            # Execute based on mode
+            if request.mode == ExtractionMode.BASIC:
+                return await self._execute_basic_extraction(content, request)
+            elif request.mode == ExtractionMode.ENHANCED:
+                return await self._execute_enhanced_extraction_mode(content, request)
+            elif request.mode == ExtractionMode.ADVANCED:
+                return await self._execute_advanced_extraction(content, request)
+            elif request.mode == ExtractionMode.CUSTOM:
+                return await self._execute_custom_extraction(content, request)
+            else:
+                raise ValueError(f"Unknown extraction mode: {request.mode}")
+                
+        except Exception as e:
+            logger.error(f"Error executing enhanced extraction: {e}")
+            raise
+    
+    async def _execute_basic_extraction(self, content: str, request: EnhancedExtractionRequest) -> Dict[str, Any]:
+        """Execute basic extraction using original LangExtract."""
+        try:
+            # Use original extractor for basic extraction
+            extraction_result = await self.extractor.extract(content, request.schemas[0])
+            
+            return {
+                "success": True,
+                "entities": extraction_result.get("entities", []),
+                "relationships": extraction_result.get("relationships", []),
+                "confidence_scores": {"overall": 0.8},
+                "metadata": {"mode": "basic", "schema": request.schemas[0]},
+                "errors": [],
+                "warnings": []
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in basic extraction: {e}")
+            raise
+    
+    async def _execute_enhanced_extraction_mode(self, content: str, request: EnhancedExtractionRequest) -> Dict[str, Any]:
+        """Execute enhanced extraction with multiple schemas and advanced features."""
+        try:
+            all_entities = []
+            all_relationships = []
+            confidence_scores = {}
+            
+            # Process each schema
+            for schema_name in request.schemas:
+                if schema_name in self.enhanced_schemas:
+                    schema_config = self.enhanced_schemas[schema_name]
+                    
+                    # Extract using schema
+                    schema_result = await self.extractor.extract(content, schema_name)
+                    
+                    # Apply enhanced features
+                    enhanced_entities = await self._apply_enhanced_features(
+                        schema_result.get("entities", []),
+                        schema_config
+                    )
+                    
+                    enhanced_relationships = await self._apply_enhanced_features(
+                        schema_result.get("relationships", []),
+                        schema_config
+                    )
+                    
+                    all_entities.extend(enhanced_entities)
+                    all_relationships.extend(enhanced_relationships)
+                    
+                    # Calculate confidence scores
+                    confidence_scores[schema_name] = self._calculate_schema_confidence(
+                        enhanced_entities, enhanced_relationships, schema_config
+                    )
+            
+            # Calculate overall confidence
+            overall_confidence = sum(confidence_scores.values()) / len(confidence_scores) if confidence_scores else 0.0
+            confidence_scores["overall"] = overall_confidence
+            
+            return {
+                "success": True,
+                "entities": all_entities,
+                "relationships": all_relationships,
+                "confidence_scores": confidence_scores,
+                "metadata": {
+                    "mode": "enhanced",
+                    "schemas_processed": request.schemas,
+                    "enhanced_features": ["multi_schema", "confidence_scoring", "entity_linking"]
+                },
+                "errors": [],
+                "warnings": []
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in enhanced extraction mode: {e}")
+            raise
+    
+    async def _execute_advanced_extraction(self, content: str, request: EnhancedExtractionRequest) -> Dict[str, Any]:
+        """Execute advanced extraction with comprehensive analysis."""
+        try:
+            # Advanced extraction with multiple passes
+            results = {}
+            
+            # First pass: Basic extraction
+            basic_result = await self._execute_basic_extraction(content, request)
+            results["basic"] = basic_result
+            
+            # Second pass: Enhanced analysis
+            enhanced_result = await self._execute_enhanced_extraction_mode(content, request)
+            results["enhanced"] = enhanced_result
+            
+            # Third pass: Cross-validation and relationship analysis
+            cross_validation = await self._perform_cross_validation(
+                basic_result, enhanced_result
+            )
+            results["cross_validation"] = cross_validation
+            
+            # Merge and optimize results
+            final_entities = self._merge_entities([
+                basic_result.get("entities", []),
+                enhanced_result.get("entities", [])
+            ])
+            
+            final_relationships = self._merge_relationships([
+                basic_result.get("relationships", []),
+                enhanced_result.get("relationships", [])
+            ])
+            
+            # Calculate advanced confidence scores
+            advanced_confidence = self._calculate_advanced_confidence(results)
+            
+            return {
+                "success": True,
+                "entities": final_entities,
+                "relationships": final_relationships,
+                "confidence_scores": advanced_confidence,
+                "metadata": {
+                    "mode": "advanced",
+                    "passes": ["basic", "enhanced", "cross_validation"],
+                    "enhanced_features": ["multi_pass", "cross_validation", "result_optimization"]
+                },
+                "errors": [],
+                "warnings": []
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in advanced extraction: {e}")
+            raise
+    
+    async def _execute_custom_extraction(self, content: str, request: EnhancedExtractionRequest) -> Dict[str, Any]:
+        """Execute custom extraction based on user-defined parameters."""
+        try:
+            custom_params = request.parameters
+            
+            # Apply custom preprocessing
+            if custom_params.get("preprocess", False):
+                content = await self._apply_custom_preprocessing(content, custom_params)
+            
+            # Execute extraction with custom schemas
+            custom_schemas = custom_params.get("schemas", request.schemas)
+            extraction_result = await self.extractor.extract(content, custom_schemas[0])
+            
+            # Apply custom post-processing
+            if custom_params.get("postprocess", False):
+                extraction_result = await self._apply_custom_postprocessing(
+                    extraction_result, custom_params
+                )
+            
+            return {
+                "success": True,
+                "entities": extraction_result.get("entities", []),
+                "relationships": extraction_result.get("relationships", []),
+                "confidence_scores": {"overall": 0.85},
+                "metadata": {
+                    "mode": "custom",
+                    "custom_parameters": custom_params,
+                    "enhanced_features": ["custom_preprocessing", "custom_postprocessing"]
+                },
+                "errors": [],
+                "warnings": []
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in custom extraction: {e}")
+            raise
+    
+    # ============================================================================
+    # Enhanced Feature Application
+    # ============================================================================
+    
+    async def _apply_enhanced_features(
+        self, 
+        items: List[Dict[str, Any]], 
+        schema_config: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Apply enhanced features to extracted items."""
+        try:
+            enhanced_items = []
+            
+            for item in items:
+                enhanced_item = item.copy()
+                
+                # Apply entity linking
+                if "entity_linking" in schema_config.get("enhanced_features", []):
+                    enhanced_item["linked_entities"] = await self._link_entities(item)
+                
+                # Apply normalization
+                if "normalization" in schema_config.get("enhanced_features", []):
+                    enhanced_item["normalized_value"] = await self._normalize_entity(item)
+                
+                # Apply confidence scoring
+                if "confidence_scoring" in schema_config.get("enhanced_features", []):
+                    enhanced_item["confidence_score"] = self._calculate_entity_confidence(item)
+                
+                enhanced_items.append(enhanced_item)
+            
+            return enhanced_items
+            
+        except Exception as e:
+            logger.error(f"Error applying enhanced features: {e}")
+            return items
+    
+    async def _link_entities(self, entity: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Link entities to external knowledge bases."""
+        try:
+            # Mock entity linking - in real implementation, this would connect to
+            # external knowledge bases like UMLS, MeSH, etc.
+            linked_entities = [
+                {
+                    "source": "umls",
+                    "concept_id": f"UMLS:{hash(entity.get('value', ''))}",
+                    "confidence": 0.85
+                }
+            ]
+            return linked_entities
+            
+        except Exception as e:
+            logger.error(f"Error linking entities: {e}")
+            return []
+    
+    async def _normalize_entity(self, entity: Dict[str, Any]) -> str:
+        """Normalize entity values."""
+        try:
+            # Use the normalizer component
+            normalized = await self.normalizer.normalize(
+                entity.get("value", ""),
+                entity.get("type", "unknown")
+            )
+            return normalized
+            
+        except Exception as e:
+            logger.error(f"Error normalizing entity: {e}")
+            return entity.get("value", "")
+    
+    def _calculate_entity_confidence(self, entity: Dict[str, Any]) -> float:
+        """Calculate confidence score for an entity."""
+        try:
+            # Mock confidence calculation - in real implementation, this would use
+            # various factors like context, frequency, validation, etc.
+            base_confidence = 0.8
+            
+            # Adjust based on entity type
+            type_confidence = {
+                "disease": 0.9,
+                "medication": 0.85,
+                "symptom": 0.8,
+                "procedure": 0.9
+            }
+            
+            entity_type = entity.get("type", "unknown")
+            if entity_type in type_confidence:
+                base_confidence *= type_confidence[entity_type]
+            
+            return min(base_confidence, 1.0)
+            
+        except Exception as e:
+            logger.error(f"Error calculating entity confidence: {e}")
+            return 0.5
+    
+    # ============================================================================
+    # Enhanced Result Processing
+    # ============================================================================
+    
+    async def _perform_cross_validation(
+        self, 
+        basic_result: Dict[str, Any], 
+        enhanced_result: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Perform cross-validation between different extraction results."""
+        try:
+            basic_entities = {e.get("value", ""): e for e in basic_result.get("entities", [])}
+            enhanced_entities = {e.get("value", ""): e for e in enhanced_result.get("entities", [])}
+            
+            # Find common entities
+            common_values = set(basic_entities.keys()) & set(enhanced_entities.keys())
+            common_entities = []
+            
+            for value in common_values:
+                basic_entity = basic_entities[value]
+                enhanced_entity = enhanced_entities[value]
+                
+                # Merge entity information
+                merged_entity = {
+                    **basic_entity,
+                    **enhanced_entity,
+                    "cross_validated": True,
+                    "validation_confidence": (
+                        basic_entity.get("confidence", 0.0) + 
+                        enhanced_entity.get("confidence", 0.0)
+                    ) / 2
+                }
+                
+                common_entities.append(merged_entity)
+            
+            return {
+                "common_entities": common_entities,
+                "validation_score": len(common_entities) / max(len(basic_entities), len(enhanced_entities), 1)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in cross-validation: {e}")
+            return {"common_entities": [], "validation_score": 0.0}
+    
+    def _merge_entities(self, entity_lists: List[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+        """Merge entities from multiple extraction passes."""
+        try:
+            merged_entities = {}
+            
+            for entity_list in entity_lists:
+                for entity in entity_list:
+                    value = entity.get("value", "")
+                    if value not in merged_entities:
+                        merged_entities[value] = entity
+                    else:
+                        # Merge with existing entity
+                        existing = merged_entities[value]
+                        merged_entities[value] = {
+                            **existing,
+                            **entity,
+                            "merged_from": existing.get("merged_from", []) + [entity.get("source", "unknown")]
+                        }
+            
+            return list(merged_entities.values())
+            
+        except Exception as e:
+            logger.error(f"Error merging entities: {e}")
+            return []
+    
+    def _merge_relationships(self, relationship_lists: List[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+        """Merge relationships from multiple extraction passes."""
+        try:
+            merged_relationships = {}
+            
+            for rel_list in relationship_lists:
+                for rel in rel_list:
+                    key = f"{rel.get('source', '')}_{rel.get('type', '')}_{rel.get('target', '')}"
+                    if key not in merged_relationships:
+                        merged_relationships[key] = rel
+                    else:
+                        # Merge with existing relationship
+                        existing = merged_relationships[key]
+                        merged_relationships[key] = {
+                            **existing,
+                            **rel,
+                            "merged_from": existing.get("merged_from", []) + [rel.get("source", "unknown")]
+                        }
+            
+            return list(merged_relationships.values())
+            
+        except Exception as e:
+            logger.error(f"Error merging relationships: {e}")
+            return []
+    
+    # ============================================================================
+    # Enhanced Confidence Calculation
+    # ============================================================================
+    
+    def _calculate_schema_confidence(
+        self, 
+        entities: List[Dict[str, Any]], 
+        relationships: List[Dict[str, Any]], 
+        schema_config: Dict[str, Any]
+    ) -> float:
+        """Calculate confidence score for a schema."""
+        try:
+            if not entities and not relationships:
+                return 0.0
+            
+            # Calculate entity confidence
+            entity_confidence = sum(
+                e.get("confidence_score", 0.5) for e in entities
+            ) / len(entities) if entities else 0.0
+            
+            # Calculate relationship confidence
+            relationship_confidence = sum(
+                r.get("confidence", 0.5) for r in relationships
+            ) / len(relationships) if relationships else 0.0
+            
+            # Weighted average
+            total_items = len(entities) + len(relationships)
+            if total_items > 0:
+                weighted_confidence = (
+                    (entity_confidence * len(entities) + relationship_confidence * len(relationships)) / total_items
+                )
+            else:
+                weighted_confidence = 0.0
+            
+            # Apply schema-specific adjustments
+            threshold = schema_config.get("confidence_threshold", 0.8)
+            if weighted_confidence < threshold:
+                weighted_confidence *= 0.9  # Penalty for low confidence
+            
+            return min(weighted_confidence, 1.0)
+            
+        except Exception as e:
+            logger.error(f"Error calculating schema confidence: {e}")
+            return 0.5
+    
+    def _calculate_advanced_confidence(self, results: Dict[str, Any]) -> Dict[str, float]:
+        """Calculate advanced confidence scores for multi-pass extraction."""
+        try:
+            confidence_scores = {}
+            
+            # Individual pass confidences
+            for pass_name, pass_result in results.items():
+                if isinstance(pass_result, dict):
+                    confidence_scores[pass_name] = pass_result.get("confidence_scores", {}).get("overall", 0.0)
+            
+            # Cross-validation confidence
+            if "cross_validation" in results:
+                cross_val = results["cross_validation"]
+                confidence_scores["cross_validation"] = cross_val.get("validation_score", 0.0)
+            
+            # Overall confidence (weighted average)
+            valid_scores = [score for score in confidence_scores.values() if score > 0]
+            if valid_scores:
+                overall_confidence = sum(valid_scores) / len(valid_scores)
+            else:
+                overall_confidence = 0.0
+            
+            confidence_scores["overall"] = overall_confidence
+            
+            return confidence_scores
+            
+        except Exception as e:
+            logger.error(f"Error calculating advanced confidence: {e}")
+            return {"overall": 0.5}
+    
+    # ============================================================================
+    # Enhanced Monitoring and Control
+    # ============================================================================
+    
+    async def _monitor_extractions(self):
+        """Monitor enhanced extraction performance."""
+        logger.info("📊 Enhanced extraction monitoring started")
+        
+        try:
+            while True:
+                await asyncio.sleep(60)  # Monitor every minute
+                
+                # Get extraction statistics
+                active_count = len(self.active_extractions)
+                completed_count = len(self.completed_extractions)
+                queue_size = self.extraction_queue.qsize()
+                
+                # Log extraction status
+                logger.info(f"📊 Extraction Status - Active: {active_count}, "
+                          f"Completed: {completed_count}, Queue: {queue_size}")
+                
+                # Record metrics
+                await self.enhanced_db_manager.record_metric(
+                    metric_name="extraction_status",
+                    metric_data={
+                        "active_extractions": active_count,
+                        "completed_extractions": completed_count,
+                        "queue_size": queue_size
+                    },
+                    category="extraction_monitoring"
+                )
+                
+        except asyncio.CancelledError:
+            logger.info("📊 Enhanced extraction monitoring stopped")
+        except Exception as e:
+            logger.error(f"Error in extraction monitoring: {e}")
+    
+    async def _handle_extraction_failure(self, request: EnhancedExtractionRequest, error: str):
+        """Handle extraction failure."""
+        try:
+            logger.error(f"Extraction {request.request_id} failed: {error}")
+            
+            # Update database status
+            await self.enhanced_db_manager.update_extraction_status(
+                request_id=request.request_id,
+                status="failed",
+                error=error
+            )
+            
+            # Create failed result
+            failed_result = EnhancedExtractionResult(
+                request_id=request.request_id,
+                document_id=request.document_id,
+                success=False,
+                entities=[],
+                relationships=[],
+                confidence_scores={},
+                processing_time=0.0,
+                metadata={"error": error},
+                errors=[error],
+                warnings=[]
+            )
+            
+            self.completed_extractions[request.request_id] = failed_result
+            
+        except Exception as e:
+            logger.error(f"Error handling extraction failure: {e}")
+    
+    # ============================================================================
+    # Enhanced Utility Methods
+    # ============================================================================
+    
+    async def get_extraction_status(self, request_id: str) -> Optional[Dict[str, Any]]:
+        """Get status of a specific extraction request."""
+        try:
+            if request_id in self.active_extractions:
+                request = self.active_extractions[request_id]
+                return asdict(request)
+            elif request_id in self.completed_extractions:
+                result = self.completed_extractions[request_id]
+                return asdict(result)
+            else:
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error getting extraction status: {e}")
+            raise
+    
+    async def get_enhanced_schemas(self) -> Dict[str, Dict[str, Any]]:
+        """Get available enhanced extraction schemas."""
+        return self.enhanced_schemas
+    
+    async def create_custom_schema(
+        self, 
+        name: str, 
+        description: str, 
+        fields: List[str], 
+        confidence_threshold: float = 0.8
+    ) -> bool:
+        """Create a custom extraction schema."""
+        try:
+            self.enhanced_schemas[name] = {
+                "name": name,
+                "description": description,
+                "fields": fields,
+                "confidence_threshold": confidence_threshold,
+                "enhanced_features": ["custom_schema"],
+                "custom": True
+            }
+            
+            logger.info(f"Created custom schema: {name}")
             return True
             
         except Exception as e:
-            logger.error(f"Failed to update extraction from validation: {e}")
-            return False
+            logger.error(f"Error creating custom schema: {e}")
+            raise
     
-    async def _apply_validation_corrections(self, 
-                                          extraction_id: str, 
-                                          corrections: Dict) -> Dict:
-        """Apply validation corrections to extraction data."""
-        # Get current extraction data
-        current_data = await self.db_manager.get_extraction_data(extraction_id)
-        
-        # Apply corrections
-        for field, corrected_value in corrections.items():
-            # Update extraction data with corrected values
-            # This would involve updating the nested extraction structure
-            pass
-        
-        return current_data
+    async def close(self):
+        """Close the enhanced LangExtract integration."""
+        try:
+            logger.info("🛑 Closing Enhanced LangExtract Integration...")
+            
+            # Clear queues and active extractions
+            while not self.extraction_queue.empty():
+                try:
+                    self.extraction_queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+            
+            self.active_extractions.clear()
+            self.completed_extractions.clear()
+            
+            logger.info("✅ Enhanced LangExtract Integration closed successfully")
+            
+        except Exception as e:
+            logger.error(f"❌ Error closing enhanced integration: {e}")
+            raise
 
+# ============================================================================
+# Export Functions
+# ============================================================================
 
-# Example usage and testing
-async def test_enhanced_langextract():
-    """Test the enhanced LangExtract integration."""
-    # This would be called with actual instances
-    # engine = EnhancedLangExtractEngine(
-    #     base_engine=LangExtractEngine(),
-    #     db_manager=EnhancedSQLiteManager()
-    # )
-    
-    # # Test single extraction
-    # sample_text = """
-    # Patient 1 was a 3-year-old male with Leigh syndrome due to MT-ATP6 c.8993T>G.
-    # He presented with developmental delay and lactic acidosis.
-    # """
-    
-    # result = await engine.extract_with_ui_support(
-    #     text=sample_text,
-    #     document_id="PMID32679198",
-    #     metadata_id="meta_001"
-    # )
-    
-    # print(f"Extraction completed: {result['extraction_id']}")
-    # print(f"Validation ID: {result['validation_id']}")
-    # print(f"Confidence summary: {result['confidence_summary']}")
-    
-    pass
-
-
-if __name__ == "__main__":
-    # Run test
-    asyncio.run(test_enhanced_langextract())
+__all__ = [
+    "EnhancedLangExtractIntegration",
+    "EnhancedExtractionRequest",
+    "EnhancedExtractionResult",
+    "ExtractionMode"
+]

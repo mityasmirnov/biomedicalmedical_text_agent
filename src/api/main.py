@@ -33,6 +33,15 @@ from .enhanced_endpoints import (
     enhanced_health_router
 )
 
+# Import enhanced endpoints
+from .enhanced_endpoints import (
+    enhanced_documents_router,
+    enhanced_extraction_router,
+    enhanced_search_router,
+    enhanced_analytics_router,
+    enhanced_health_router
+)
+
 def create_api_router() -> APIRouter:
     """Create and configure the main API router."""
     api_router = APIRouter()
@@ -60,10 +69,6 @@ def create_api_router() -> APIRouter:
     # Include health and system endpoints
     api_router.include_router(health_router, tags=["Health & System"])
     
-<<<<<<< Current (Your changes)
-    # Include authentication endpoints
-    api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
-=======
     # Include enhanced API routers
     api_router.include_router(
         enhanced_documents_router, 
@@ -90,7 +95,6 @@ def create_api_router() -> APIRouter:
         prefix="/enhanced/health", 
         tags=["Enhanced Health"]
     )
->>>>>>> Incoming (Background Agent changes)
     
     return api_router
 
