@@ -1,0 +1,50 @@
+{
+  "extraction_class": "TreatmentEvent",
+  "description": "Therapy, intervention, and immediate clinical outcome.",
+  "attributes": [
+    {
+      "name": "therapy",
+      "description": "Drug(s) or therapy names (e.g., 'thiamine', 'coenzyme Q10', 'physical therapy')",
+      "type": "string"
+    },
+    {
+      "name": "dose",
+      "description": "Dose if explicitly stated (e.g., '100 mg/day', 'high-dose')",
+      "type": "string",
+      "nullable": true
+    },
+    {
+      "name": "route",
+      "description": "Route of administration if stated",
+      "type": "string",
+      "enum": [
+        "oral",
+        "iv",
+        "im",
+        "topical",
+        "inhalation",
+        "unknown"
+      ],
+      "nullable": true
+    },
+    {
+      "name": "duration",
+      "description": "Treatment duration if mentioned",
+      "type": "string",
+      "nullable": true
+    },
+    {
+      "name": "outcome",
+      "description": "Brief text outcome (e.g., 'improvement', 'no response', 'stabilization', 'death')",
+      "type": "string",
+      "nullable": true
+    },
+    {
+      "name": "response_time",
+      "description": "Time to response if mentioned",
+      "type": "string",
+      "nullable": true
+    }
+  ],
+  "few_shot_examples": null
+}

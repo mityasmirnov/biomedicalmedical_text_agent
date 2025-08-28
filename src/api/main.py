@@ -5,7 +5,7 @@ This module creates and configures the main API router that includes all endpoin
 """
 
 from fastapi import APIRouter
-from .endpoints import (
+from .simple_endpoints import (
     metadata_triage_router,
     extraction_router,
     database_router,
@@ -15,7 +15,13 @@ from .endpoints import (
     agents_router,
     documents_router,
     metadata_router,
-    health_router
+    health_router,
+    validation_router,
+    config_router,
+    ontologies_router,
+    prompts_router,
+    analytics_router,
+    auth_router
 )
 
 def create_api_router() -> APIRouter:
@@ -35,8 +41,18 @@ def create_api_router() -> APIRouter:
     api_router.include_router(documents_router, prefix="/documents", tags=["Documents"])
     api_router.include_router(metadata_router, prefix="/metadata", tags=["Metadata Browser"])
     
+    # Include new UI routers
+    api_router.include_router(validation_router, prefix="/validation", tags=["Validation"])
+    api_router.include_router(config_router, prefix="/config", tags=["Configuration"])
+    api_router.include_router(ontologies_router, prefix="/ontologies", tags=["Ontologies"])
+    api_router.include_router(prompts_router, prefix="/prompts", tags=["Prompts"])
+    api_router.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])
+    
     # Include health and system endpoints
     api_router.include_router(health_router, tags=["Health & System"])
+    
+    # Include authentication endpoints
+    api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
     
     return api_router
 

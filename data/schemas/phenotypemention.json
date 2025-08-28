@@ -1,0 +1,44 @@
+{
+  "extraction_class": "PhenotypeMention",
+  "description": "One clinical phenotype, sign, or symptom from the text.",
+  "attributes": [
+    {
+      "name": "surface_form",
+      "description": "Verbatim short phrase for the phenotype (e.g., 'generalized weakness', 'developmental delay')",
+      "type": "string"
+    },
+    {
+      "name": "negated",
+      "description": "Whether explicitly negated in text (e.g., 'no seizures', 'without fever')",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "name": "onset_age_years",
+      "description": "Numeric years if a local onset age is implied. Convert months to decimal years (e.g., 5 months \u2192 0.42)",
+      "type": "number",
+      "minimum": 0,
+      "nullable": true
+    },
+    {
+      "name": "severity",
+      "description": "Severity if explicitly mentioned",
+      "type": "string",
+      "enum": [
+        "mild",
+        "moderate",
+        "severe",
+        "unknown"
+      ],
+      "nullable": true
+    },
+    {
+      "name": "hpo_id",
+      "description": "HPO ID if explicitly mentioned in text (do not infer)",
+      "type": "string",
+      "pattern": "^HP:\\d{7}$",
+      "nullable": true
+    }
+  ],
+  "few_shot_examples": null
+}

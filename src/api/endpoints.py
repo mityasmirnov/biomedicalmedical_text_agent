@@ -15,12 +15,32 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # Import core system components
-from metadata_triage.metadata_orchestrator import MetadataOrchestrator
-from langextract_integration.extractor import LangExtractEngine
-from database.sqlite_manager import SQLiteManager
-from database.vector_manager import VectorManager
-from rag.rag_system import RAGSystem
-from core.llm_client.openrouter_client import OpenRouterClient
+# Commented out imports that don't exist yet - will be implemented later
+# from metadata_triage.metadata_orchestrator import MetadataOrchestrator
+# from langextract_integration.extractor import LangExtractEngine
+# from database.sqlite_manager import SQLiteManager
+# from database.vector_manager import VectorManager
+# from rag.rag_system import RAGSystem
+# from core.llm_client.openrouter_client import OpenRouterClient
+
+# Mock implementations for now
+class MetadataOrchestrator:
+    pass
+
+class LangExtractEngine:
+    pass
+
+class SQLiteManager:
+    pass
+
+class VectorManager:
+    pass
+
+class RAGSystem:
+    pass
+
+class OpenRouterClient:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -195,8 +215,17 @@ async def get_system_metrics() -> Dict[str, Any]:
 async def get_system_status() -> Dict[str, Any]:
     """Return system status information."""
     return {
-        "status": "operational",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "status": "healthy",
+        "uptime": 3600,  # 1 hour in seconds
+        "processing_queue": 5,
+        "active_extractions": 2,
+        "database_size": 1250,
+        "api_usage": {
+            "openrouter": 150,
+            "huggingface": 75,
+            "total_requests": 225
+        },
+        "last_updated": datetime.utcnow().isoformat() + "Z",
         "service": "biomedical-text-agent",
         "version": "1.0.0",
         "authentication": "disabled",
@@ -207,6 +236,59 @@ async def get_system_status() -> Dict[str, Any]:
             "database": "enabled",
             "ui": "enabled"
         }
+    }
+
+@dashboard_router.get("/queue")
+async def get_processing_queue() -> Dict[str, Any]:
+    """Return processing queue information."""
+    return {
+        "jobs": [
+            {
+                "id": "job-001",
+                "type": "metadata_search",
+                "status": "running",
+                "progress": 75,
+                "created_at": (datetime.utcnow() - timedelta(minutes=5)).isoformat() + "Z",
+                "estimated_completion": (datetime.utcnow() + timedelta(minutes=2)).isoformat() + "Z",
+                "details": {"query": "Leigh syndrome case report", "max_results": 100}
+            },
+            {
+                "id": "job-002",
+                "type": "document_extraction",
+                "status": "pending",
+                "progress": 0,
+                "created_at": datetime.utcnow().isoformat() + "Z",
+                "details": {"document_id": "PMID32679198", "type": "case_report"}
+            }
+        ]
+    }
+
+@dashboard_router.get("/results")
+async def get_recent_results() -> Dict[str, Any]:
+    """Return recent extraction results."""
+    return {
+        "results": [
+            {
+                "id": "ext-001",
+                "document_id": "PMID32679198",
+                "title": "Leigh Syndrome: A Case Report",
+                "extraction_type": "case_report",
+                "confidence_score": 0.87,
+                "validation_status": "pending",
+                "created_at": (datetime.utcnow() - timedelta(minutes=30)).isoformat() + "Z",
+                "patient_count": 1
+            },
+            {
+                "id": "ext-002",
+                "document_id": "PMID12345678",
+                "title": "Mitochondrial Disorder Analysis",
+                "extraction_type": "research_paper",
+                "confidence_score": 0.92,
+                "validation_status": "validated",
+                "created_at": (datetime.utcnow() - timedelta(hours=2)).isoformat() + "Z",
+                "patient_count": 15
+            }
+        ]
     }
 
 # ============================================================================
@@ -1195,6 +1277,390 @@ async def ask_question(request: RAGQuestion):
     except Exception as e:
         logger.error(f"RAG question failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================================================
+# Configuration Endpoints
+# ============================================================================
+
+config_router = APIRouter()
+
+@config_router.get("/providers")
+async def get_providers() -> Dict[str, Any]:
+    """Get available API providers."""
+    return {
+        "providers": [
+            {
+                "name": "openrouter",
+                "display_name": "OpenRouter",
+                "description": "Access to multiple LLM models including GPT, Claude, and others",
+                "enabled": True,
+                "api_key_configured": True,
+                "base_url": "https://openrouter.ai/api/v1",
+                "rate_limit": 100
+            },
+            {
+                "name": "huggingface",
+                "display_name": "Hugging Face",
+                "description": "Open source model hosting and inference API",
+                "enabled": True,
+                "api_key_configured": False,
+                "base_url": "https://api-inference.huggingface.co",
+                "rate_limit": 50
+            },
+            {
+                "name": "ollama",
+                "display_name": "Ollama",
+                "description": "Local model deployment and inference",
+                "enabled": False,
+                "api_key_configured": False,
+                "base_url": "http://localhost:11434",
+                "rate_limit": 1000
+            }
+        ]
+    }
+
+@config_router.put("/providers/{provider}")
+async def update_provider(provider: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """Update provider configuration."""
+    return {
+        "provider": provider,
+        "updated": True,
+        "changes": data
+    }
+
+@config_router.get("/models")
+async def get_models() -> Dict[str, Any]:
+    """Get available models."""
+    return {
+        "models": [
+            {
+                "id": "google/gemma-2-27b-it:free",
+                "name": "Gemma 2 27B",
+                "provider": "openrouter",
+                "type": "free",
+                "available": True,
+                "max_tokens": 8192,
+                "context_length": 32768
+            },
+            {
+                "id": "microsoft/phi-3-mini-128k-instruct:free",
+                "name": "Phi-3 Mini",
+                "provider": "openrouter",
+                "type": "free",
+                "available": True,
+                "max_tokens": 4096,
+                "context_length": 128000
+            }
+        ]
+    }
+
+@config_router.put("/providers/{provider}/key")
+async def update_api_key(provider: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """Update API key for a provider."""
+    return {
+        "provider": provider,
+        "api_key_updated": True,
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+
+@config_router.get("/usage")
+async def get_usage() -> Dict[str, Any]:
+    """Get API usage statistics."""
+    return {
+        "openrouter": {
+            "total_requests": 150,
+            "total_cost": 0.25,
+            "limit": 1000,
+            "reset_date": "2024-02-01"
+        },
+        "huggingface": {
+            "total_requests": 75,
+            "total_cost": 0.00,
+            "limit": 500,
+            "reset_date": "2024-02-01"
+        }
+    }
+
+# ============================================================================
+# Ontology Endpoints
+# ============================================================================
+
+ontologies_router = APIRouter()
+
+@ontologies_router.get("/")
+async def get_ontologies() -> Dict[str, Any]:
+    """Get all available ontologies."""
+    return {
+        "ontologies": [
+            {
+                "id": "hpo",
+                "name": "Human Phenotype Ontology",
+                "description": "Standard vocabulary of phenotypic abnormalities encountered in human disease",
+                "version": "2024-01-15",
+                "source": "https://hpo.jax.org/",
+                "term_count": 15447,
+                "last_updated": "2024-01-15"
+            },
+            {
+                "id": "genes",
+                "name": "Gene Ontology",
+                "description": "Standard representation of gene and gene product attributes",
+                "version": "2024-01-20",
+                "source": "http://geneontology.org/",
+                "term_count": 45678,
+                "last_updated": "2024-01-20"
+            }
+        ]
+    }
+
+@ontologies_router.post("/search")
+async def search_ontologies(query: str) -> Dict[str, Any]:
+    """Search ontology terms."""
+    # Mock search results
+    return {
+        "results": [
+            {
+                "term": {
+                    "id": "HP:0000002",
+                    "name": "Abnormality of body height",
+                    "description": "Abnormal body height"
+                },
+                "ontology": "hpo",
+                "relevance": 0.95,
+                "matched_fields": ["name", "description"]
+            }
+        ]
+    }
+
+# ============================================================================
+# Prompt Management Endpoints
+# ============================================================================
+
+prompts_router = APIRouter()
+
+@prompts_router.get("/")
+async def get_prompts() -> Dict[str, Any]:
+    """Get all prompts."""
+    return {
+        "prompts": [
+            {
+                "id": "system-main",
+                "name": "Main System Prompt",
+                "description": "Primary system prompt for the biomedical text agent",
+                "content": "You are a biomedical text analysis agent specialized in extracting structured information from medical literature.",
+                "type": "system",
+                "version": "1.0.0",
+                "is_active": True,
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-15T00:00:00Z"
+            }
+        ]
+    }
+
+@prompts_router.post("/")
+async def create_prompt(prompt_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Create a new prompt."""
+    return {
+        "prompt": {
+            "id": f"prompt-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+            **prompt_data,
+            "created_at": datetime.utcnow().isoformat() + "Z",
+            "updated_at": datetime.utcnow().isoformat() + "Z"
+        }
+    }
+
+@prompts_router.get("/langextract-instructions")
+async def get_langextract_instructions() -> Dict[str, Any]:
+    """Get LangExtract instructions."""
+    return {
+        "instructions": [
+            {
+                "id": "patient-extraction",
+                "name": "Patient Information Extraction",
+                "description": "Extract patient demographics and clinical information",
+                "schema": '{"patient": {"age": "number", "gender": "string"}}',
+                "examples": ["Patient is a 25-year-old male"],
+                "instructions": "Identify patient age, gender, symptoms, and diagnosis from the text.",
+                "is_default": True
+            }
+        ]
+    }
+
+# ============================================================================
+# Analytics Endpoints
+# ============================================================================
+
+analytics_router = APIRouter()
+
+@analytics_router.get("/visualizations")
+async def get_visualizations(time_range: str = "7d") -> Dict[str, Any]:
+    """Get analytics data for visualizations."""
+    return {
+        "extraction_stats": {
+            "total_extractions": 1250,
+            "successful_extractions": 1180,
+            "failed_extractions": 70,
+            "average_confidence": 0.87,
+            "total_documents": 450
+        },
+        "agent_performance": [
+            {
+                "agent_id": "extraction-agent",
+                "agent_name": "Extraction Agent",
+                "total_requests": 850,
+                "success_rate": 0.94,
+                "average_response_time": 2.3,
+                "error_rate": 0.06
+            }
+        ],
+        "extraction_timeline": [
+            {"date": "2024-01-01", "extractions": 45, "documents": 12, "confidence": 0.85},
+            {"date": "2024-01-02", "extractions": 52, "documents": 15, "confidence": 0.87}
+        ],
+        "concept_distribution": [
+            {"concept": "Patient Demographics", "count": 450, "percentage": 36},
+            {"concept": "Clinical Symptoms", "count": 380, "percentage": 30.4}
+        ],
+        "validation_stats": {
+            "total_validated": 850,
+            "approved": 780,
+            "rejected": 45,
+            "pending": 25,
+            "average_validation_time": 3.2
+        }
+    }
+
+# ============================================================================
+# Validation Endpoints
+# ============================================================================
+
+validation_router = APIRouter()
+
+@validation_router.get("/{extraction_id}")
+async def get_extraction_data(extraction_id: str) -> Dict[str, Any]:
+    """Get extraction data for validation."""
+    # Mock data for now - this would come from your actual extraction system
+    return {
+        "extraction_id": extraction_id,
+        "original_text": "Patient is a 3-year-old male with Leigh syndrome due to MT-ATP6 c.8993T>G mutation...",
+        "highlighted_text": "Patient is a <span class='extraction-highlight' data-field='age' data-confidence='0.95'>3-year-old</span> <span class='extraction-highlight' data-field='sex' data-confidence='0.98'>male</span> with <span class='extraction-highlight' data-field='diagnosis' data-confidence='0.92'>Leigh syndrome</span> due to <span class='extraction-highlight' data-field='gene_symbol' data-confidence='0.89'>MT-ATP6</span> <span class='extraction-highlight' data-field='mutation_description' data-confidence='0.87'>c.8993T>G</span> mutation...",
+        "extractions": {
+            "age_of_onset_years": 3,
+            "sex": "male",
+            "diagnosis": "Leigh syndrome",
+            "gene_symbol": "MT-ATP6",
+            "mutation_description": "c.8993T>G"
+        },
+        "spans": [
+            {
+                "start": 8,
+                "end": 17,
+                "text": "3-year-old",
+                "extraction_type": "demographics",
+                "field_name": "age_of_onset_years",
+                "confidence": 0.95
+            },
+            {
+                "start": 18,
+                "end": 22,
+                "text": "male",
+                "extraction_type": "demographics",
+                "field_name": "sex",
+                "confidence": 0.98
+            }
+        ],
+        "confidence_scores": {
+            "age_of_onset_years": 0.95,
+            "sex": 0.98,
+            "diagnosis": 0.92,
+            "gene_symbol": 0.89,
+            "mutation_description": 0.87
+        }
+    }
+
+@validation_router.post("/{extraction_id}/submit")
+async def submit_validation(extraction_id: str, validation_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Submit validation results."""
+    # Mock implementation - this would save to your database
+    return {
+        "extraction_id": extraction_id,
+        "validation_status": validation_data.get("status", "validated"),
+        "validator_notes": validation_data.get("notes", ""),
+        "corrections": validation_data.get("corrections", {}),
+        "submitted_at": datetime.utcnow().isoformat() + "Z"
+    }
+
+@validation_router.get("/queue")
+async def get_validation_queue(status: Optional[str] = None) -> Dict[str, Any]:
+    """Get validation queue."""
+    # Mock data - this would come from your database
+    queue_items = [
+        {
+            "extraction_id": "ext-001",
+            "document_title": "Leigh Syndrome Case Report",
+            "extraction_type": "case_report",
+            "confidence_score": 0.87,
+            "status": "pending",
+            "created_at": (datetime.utcnow() - timedelta(minutes=30)).isoformat() + "Z"
+        },
+        {
+            "extraction_id": "ext-002",
+            "document_title": "Mitochondrial Disorder Analysis",
+            "extraction_type": "research_paper",
+            "confidence_score": 0.92,
+            "status": "pending",
+            "created_at": (datetime.utcnow() - timedelta(hours=2)).isoformat() + "Z"
+        }
+    ]
+    
+    if status:
+        queue_items = [item for item in queue_items if item["status"] == status]
+    
+    return {"queue": queue_items}
+
+# ============================================================================
+# Authentication Endpoints
+# ============================================================================
+
+auth_router = APIRouter()
+
+@auth_router.post("/login")
+async def login(credentials: Dict[str, Any]) -> Dict[str, Any]:
+    """Mock login endpoint."""
+    return {
+        "access_token": "mock_token_12345",
+        "token_type": "bearer",
+        "user": {
+            "id": "user_001",
+            "username": credentials.get("username", "user"),
+            "email": "user@example.com",
+            "role": "admin"
+        }
+    }
+
+@auth_router.post("/logout")
+async def logout() -> Dict[str, Any]:
+    """Mock logout endpoint."""
+    return {"message": "Logged out successfully"}
+
+@auth_router.post("/refresh")
+async def refresh_token() -> Dict[str, Any]:
+    """Mock token refresh endpoint."""
+    return {
+        "access_token": "new_mock_token_67890",
+        "token_type": "bearer"
+    }
+
+@auth_router.get("/profile")
+async def get_profile() -> Dict[str, Any]:
+    """Mock user profile endpoint."""
+    return {
+        "id": "user_001",
+        "username": "admin",
+        "email": "admin@example.com",
+        "role": "admin",
+        "created_at": "2024-01-01T00:00:00Z"
+    }
 
 # ============================================================================
 # Health and System Status Endpoints

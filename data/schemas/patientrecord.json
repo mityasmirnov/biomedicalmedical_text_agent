@@ -1,0 +1,134 @@
+{
+  "extraction_class": "PatientRecord",
+  "description": "All fields needed to build one structured row for a single patient.",
+  "attributes": [
+    {
+      "name": "patient_label",
+      "type": "string",
+      "description": "Patient identifier from text (e.g., 'Patient 2', 'Case 1', 'P1')"
+    },
+    {
+      "name": "sex",
+      "type": "string",
+      "enum": [
+        "m",
+        "f"
+      ],
+      "description": "Map male\u2192'm', female\u2192'f' if stated. Use exact text indicators: girl/woman/female\u2192'f', boy/man/male\u2192'm'",
+      "nullable": true
+    },
+    {
+      "name": "age_of_onset_years",
+      "type": "number",
+      "minimum": 0,
+      "description": "Age at symptom onset in years. Convert months to decimal years (e.g., 5 months \u2192 0.42). Use earliest age if multiple onsets described.",
+      "nullable": true
+    },
+    {
+      "name": "age_at_diagnosis_years",
+      "type": "number",
+      "minimum": 0,
+      "description": "Age at diagnosis in years if different from onset",
+      "nullable": true
+    },
+    {
+      "name": "last_seen_age_years",
+      "type": "number",
+      "minimum": 0,
+      "description": "Age at last follow-up in years",
+      "nullable": true
+    },
+    {
+      "name": "alive_flag",
+      "type": "integer",
+      "enum": [
+        0,
+        1
+      ],
+      "description": "0=alive, 1=deceased. Only set to 1 if death is explicitly mentioned."
+    },
+    {
+      "name": "consanguinity",
+      "type": "boolean",
+      "description": "Whether consanguineous parents are mentioned",
+      "nullable": true
+    },
+    {
+      "name": "family_history",
+      "type": "string",
+      "description": "Brief family history if mentioned",
+      "nullable": true
+    },
+    {
+      "name": "mutations",
+      "type": "array",
+      "items_class": "Mutation",
+      "description": "Array of genetic mutations found in this patient"
+    },
+    {
+      "name": "phenotypes",
+      "type": "array",
+      "items_class": "PhenotypeMention",
+      "description": "Array of clinical phenotypes observed in this patient"
+    },
+    {
+      "name": "treatments",
+      "type": "array",
+      "items_class": "TreatmentEvent",
+      "description": "Array of treatments and interventions for this patient"
+    }
+  ],
+  "few_shot_examples": [
+    {
+      "extraction_text": "Patient 1 was a 4-month-old female with Leigh syndrome. She had SLC19A3 c.1276_1278delTAC (p.Val426del) mutation. She presented with encephalopathy and was treated with thiamine and biotin with improvement. She is alive at last follow-up.",
+      "extractions": [
+        {
+          "PatientRecord": {
+            "patient_label": "Patient 1",
+            "sex": "f",
+            "age_of_onset_years": 0.33,
+            "age_at_diagnosis_years": null,
+            "last_seen_age_years": null,
+            "alive_flag": 0,
+            "consanguinity": null,
+            "family_history": null,
+            "mutations": [
+              {
+                "Mutation": {
+                  "gene": "SLC19A3",
+                  "cdna": "c.1276_1278delTAC",
+                  "protein": "p.Val426del",
+                  "zygosity": "unknown",
+                  "inheritance": null
+                }
+              }
+            ],
+            "phenotypes": [
+              {
+                "PhenotypeMention": {
+                  "surface_form": "encephalopathy",
+                  "negated": false,
+                  "onset_age_years": 0.33,
+                  "severity": null,
+                  "hpo_id": null
+                }
+              }
+            ],
+            "treatments": [
+              {
+                "TreatmentEvent": {
+                  "therapy": "thiamine and biotin",
+                  "dose": null,
+                  "route": null,
+                  "duration": null,
+                  "outcome": "improvement",
+                  "response_time": null
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

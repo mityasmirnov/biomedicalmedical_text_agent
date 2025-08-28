@@ -1,0 +1,50 @@
+{
+  "extraction_class": "Mutation",
+  "description": "A single genetic mutation, preferably in HGVS syntax if present.",
+  "attributes": [
+    {
+      "name": "gene",
+      "description": "HGNC gene symbol if stated (e.g., SURF1, MT-ATP6)",
+      "type": "string",
+      "nullable": true
+    },
+    {
+      "name": "cdna",
+      "description": "cDNA notation if stated (e.g., c.26T>C, c.1276_1278delTAC)",
+      "type": "string",
+      "nullable": true
+    },
+    {
+      "name": "protein",
+      "description": "Protein notation if stated (e.g., p.Leu9Pro, p.Val426del)",
+      "type": "string",
+      "nullable": true
+    },
+    {
+      "name": "zygosity",
+      "description": "Zygosity if explicitly stated in text",
+      "type": "string",
+      "enum": [
+        "homozygous",
+        "heterozygous",
+        "compound_het",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    {
+      "name": "inheritance",
+      "description": "Inheritance pattern if mentioned",
+      "type": "string",
+      "enum": [
+        "autosomal_recessive",
+        "autosomal_dominant",
+        "x_linked",
+        "mitochondrial",
+        "unknown"
+      ],
+      "nullable": true
+    }
+  ],
+  "few_shot_examples": null
+}

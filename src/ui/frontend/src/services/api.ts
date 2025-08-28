@@ -1,93 +1,138 @@
 import axios from 'axios';
 
-// --- Axios Instance ---
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+
 const apiClient = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || '/api/v1',
+  baseURL: API_BASE_URL,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// --- Interceptors ---
+// Request interceptor for auth
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers = config.headers || {};
-      (config.headers as any)['Authorization'] = `Bearer ${token}`;
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor for error handling
+apiClient.interceptors.response.use(
+  (response) => response,
   (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('auth_token');
+      window.location.href = '/login';
+    }
     return Promise.reject(error);
   }
 );
 
-// --- API Definitions ---
-
-// Auth API
-export const authAPI = {
-  login: async (credentials: any) => {
-    const response = await apiClient.post('/auth/token', new URLSearchParams(credentials), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
-    // After login, fetch user data
-    const userResponse = await authAPI.verifyToken(response.data.access_token);
-    return { token: response.data.access_token, user: userResponse.user };
+export const api = {
+  // Dashboard APIs
+  dashboard: {
+    getSystemStatus: () => apiClient.get('/dashboard/system-status'),
+    getProcessingQueue: () => apiClient.get('/dashboard/recent-activities'),
+    getRecentResults: () => apiClient.get('/dashboard/statistics'),
   },
-  register: async (userData: any) => {
-    const response = await apiClient.post('/auth/register', userData);
-    const userResponse = await authAPI.verifyToken(response.data.access_token);
-    return { token: response.data.access_token, user: userResponse.user };
+
+  // Metadata APIs
+  metadata: {
+    search: (params: any) => apiClient.get('/metadata/search', { params }),
+    export: (params: any) => apiClient.post('/metadata/download-document', params),
+    getAll: () => apiClient.get('/metadata'),
+    getById: (id: string) => apiClient.get(`/metadata/${id}`),
   },
-  logout: () => apiClient.post('/auth/logout'),
-  verifyToken: async (token: string) => {
-    const response = await apiClient.post('/auth/verify', null, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    return response.data;
+
+  // Document APIs
+  documents: {
+    getAll: () => apiClient.get('/documents'),
+    getById: (id: string) => apiClient.get(`/documents/${id}`),
+    upload: (formData: FormData) => apiClient.post('/documents/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    startExtraction: (id: string, params: any) => apiClient.post(`/documents/${id}/extract`, params),
+    getExtractionResults: (id: string) => apiClient.get(`/documents/${id}/full-text`),
+    extract: (id: string) => apiClient.post(`/documents/${id}/extract`),
+    delete: (id: string) => apiClient.delete(`/documents/${id}`),
   },
-  refreshToken: async (token: string) => {
-    const response = await apiClient.post('/auth/refresh', null, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const userResponse = await authAPI.verifyToken(response.data.access_token);
-    return { token: response.data.access_token, user: userResponse.user };
+
+  // Validation APIs
+  validation: {
+    getExtractionData: (id: string) => apiClient.get(`/validation/${id}`),
+    submitValidation: (id: string, data: any) => apiClient.post(`/validation/${id}/submit`, data),
+    getQueue: (status?: string) => apiClient.get('/validation/queue', { params: { status } }),
   },
-};
 
-// Dashboard API
-export const dashboardAPI = {
-  getOverview: () => apiClient.get('/dashboard/overview'),
-  getStatistics: () => apiClient.get('/dashboard/statistics'),
-  getSystemStatus: () => apiClient.get('/dashboard/system-status'),
-  getRecentActivities: () => apiClient.get('/dashboard/recent-activities'),
-  getAlerts: () => apiClient.get('/dashboard/alerts'),
-};
+  // Database APIs
+  database: {
+    getTables: () => apiClient.get('/database/status'),
+    getTableData: (table: string, params?: any) => apiClient.get(`/database/${table}`, { params }),
+    getTableSchema: (table: string) => apiClient.get(`/database/${table}/schema`),
+    getStatistics: () => apiClient.get('/database/status'),
+    exportTable: (table: string) => apiClient.get(`/database/${table}/export`),
+    query: (sql: string) => apiClient.post('/database/query', { sql }),
+  },
 
-// Agents API
-export const agentsAPI = {
-  getAgents: () => apiClient.get('/agents/'),
-  getAgent: (id: string) => apiClient.get(`/agents/${id}/`),
-  startAgent: (id: string) => apiClient.post(`/agents/${id}/start/`),
-  stopAgent: (id: string) => apiClient.post(`/agents/${id}/stop/`),
-};
+  // Agents APIs
+  agents: {
+    getAll: () => apiClient.get('/agents'),
+    getById: (id: string) => apiClient.get(`/agents/${id}`),
+    start: (id: string) => apiClient.post(`/agents/${id}/start`),
+    stop: (id: string) => apiClient.post(`/agents/${id}/stop`),
+  },
 
-// Documents API
-export const documentsAPI = {
-  getDocuments: () => apiClient.get('/documents/'),
-  getDocument: (id: string) => apiClient.get(`/documents/${id}/`),
-  getDocumentFullText: (id: string) => apiClient.get(`/documents/${id}/full-text/`),
-};
+  // Configuration APIs
+  config: {
+    getProviders: () => apiClient.get('/config/providers'),
+    updateProvider: (provider: string, data: any) => apiClient.put(`/config/providers/${provider}`, data),
+    getModels: () => apiClient.get('/config/models'),
+    updateApiKey: (provider: string, apiKey: string) => apiClient.put(`/config/providers/${provider}/key`, { api_key: apiKey }),
+    getUsage: () => apiClient.get('/config/usage'),
+  },
 
-// Metadata API
-export const metadataAPI = {
-  getMetadataOverview: () => apiClient.get('/metadata/'),
-  getCollection: (name: string) => apiClient.get(`/metadata/collections/${name}/`),
-  getCollectionDocuments: (name: string, limit = 100, offset = 0) => 
-    apiClient.get(`/metadata/collections/${name}/documents/?limit=${limit}&offset=${offset}`),
-  searchMetadata: (query: string, collection?: string, limit = 100) => 
-    apiClient.get(`/metadata/search/?query=${query}&collection=${collection || ''}&limit=${limit}`),
+  // Ontology APIs
+  ontologies: {
+    getAll: () => apiClient.get('/ontologies'),
+    getTerms: (ontologyId: string) => apiClient.get(`/ontologies/${ontologyId}/terms`),
+    getTermDetails: (termId: string) => apiClient.get(`/ontologies/terms/${termId}`),
+    search: (params: any) => apiClient.post('/ontologies/search', params),
+    updateTerm: (termId: string, data: any) => apiClient.put(`/ontologies/terms/${termId}`, data),
+  },
+
+  // Prompt APIs
+  prompts: {
+    getAll: () => apiClient.get('/prompts'),
+    getById: (id: string) => apiClient.get(`/prompts/${id}`),
+    create: (data: any) => apiClient.post('/prompts', data),
+    update: (id: string, data: any) => apiClient.put(`/prompts/${id}`, data),
+    delete: (id: string) => apiClient.delete(`/prompts/${id}`),
+    getLangExtractInstructions: () => apiClient.get('/prompts/langextract-instructions'),
+    createLangExtractInstruction: (data: any) => apiClient.post('/prompts/langextract-instructions', data),
+    updateLangExtractInstruction: (id: string, data: any) => apiClient.put(`/prompts/langextract-instructions/${id}`, data),
+    test: (id: string, data: any) => apiClient.post(`/prompts/${id}/test`, data),
+  },
+
+  // Analytics APIs
+  analytics: {
+    getVisualizations: (params: any) => apiClient.get('/analytics/visualizations', { params }),
+    exportVisualizations: (params: any) => apiClient.post('/analytics/export', params),
+    getMetrics: () => apiClient.get('/analytics/metrics'),
+  },
+
+  // Authentication APIs
+  auth: {
+    login: (credentials: any) => apiClient.post('/auth/login', credentials),
+    logout: () => apiClient.post('/auth/logout'),
+    refresh: () => apiClient.post('/auth/refresh'),
+    getProfile: () => apiClient.get('/auth/profile'),
+  },
 };
 
 export default apiClient;
