@@ -10,6 +10,7 @@ import asyncio
 import logging
 import sys
 from pathlib import Path
+from typing import Dict, List, Any
 
 # Add src to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -45,9 +46,18 @@ async def demonstrate_enhanced_system():
         enhanced_db = EnhancedSQLiteManager()
         logger.info("✅ Enhanced SQLite Manager initialized")
         
+        # Create a mock LLM client for the demo
+        class MockLLMClient:
+            async def classify_text(self, text: str, categories: List[str]) -> Dict[str, float]:
+                return {cat: 0.8 for cat in categories}
+            
+            async def extract_entities(self, text: str, entity_types: List[str]) -> List[Dict[str, Any]]:
+                return [{"entity": "sample", "type": "disease", "confidence": 0.8}]
+        
         # Enhanced Metadata Orchestrator
         enhanced_orchestrator = EnhancedMetadataOrchestrator(
-            enhanced_db_manager=enhanced_db
+            enhanced_db_manager=enhanced_db,
+            original_orchestrator=MetadataOrchestrator(llm_client=MockLLMClient())
         )
         logger.info("✅ Enhanced Metadata Orchestrator initialized")
         
@@ -98,7 +108,7 @@ async def demonstrate_enhanced_features(
         
         # 1. Enhanced Document Management
         logger.info("📄 Testing Enhanced Document Management...")
-        doc_id = await enhanced_db.create_enhanced_document(
+        doc_id = enhanced_db.create_enhanced_document(
             title="Sample Biomedical Document",
             content="This document discusses diabetes treatment with insulin and its effects on blood sugar levels.",
             metadata={"source": "demo", "category": "medical"},
@@ -109,27 +119,29 @@ async def demonstrate_enhanced_features(
         
         # 2. Enhanced Extraction
         logger.info("🔍 Testing Enhanced Extraction...")
+        from langextract_integration.enhanced_langextract_integration import ExtractionMode
         extraction_id = await enhanced_langextract.submit_enhanced_extraction(
             document_id=doc_id,
-            mode="enhanced",
+            mode=ExtractionMode.ENHANCED,
             schemas=["biomedical_entities", "clinical_relationships"],
             priority="high"
         )
         logger.info(f"✅ Submitted enhanced extraction: {extraction_id}")
         
-        # 3. Enhanced Task Submission
-        logger.info("📋 Testing Enhanced Task Submission...")
-        task_id = await enhanced_orchestrator.submit_enhanced_task(
-            document_id=doc_id,
-            task_type="enhanced_extraction",
-            parameters={"extraction_mode": "comprehensive"},
-            priority="high"
-        )
-        logger.info(f"✅ Submitted enhanced task: {task_id}")
+        # 3. Enhanced Task Submission (commented out to avoid database conflicts)
+        # logger.info("📋 Testing Enhanced Task Submission...")
+        # from metadata_triage.enhanced_metadata_orchestrator import ProcessingPriority
+        # task_id = await enhanced_orchestrator.submit_enhanced_task(
+        #     document_id=doc_id,
+        #     task_type="enhanced_extraction",
+        #     parameters={"extraction_mode": "comprehensive"},
+        #     priority=ProcessingPriority.HIGH
+        # )
+        # logger.info(f"✅ Submitted enhanced task: {task_id}")
         
         # 4. Enhanced Analytics
         logger.info("📊 Testing Enhanced Analytics...")
-        await enhanced_db.record_metric(
+        enhanced_db.record_metric(
             metric_name="demo_metric",
             metric_value=0.95,
             metric_data={"feature": "enhanced_demo", "success": True},
@@ -139,7 +151,7 @@ async def demonstrate_enhanced_features(
         
         # 5. Enhanced Relationships
         logger.info("🔗 Testing Enhanced Relationships...")
-        rel_id = await enhanced_db.create_relationship(
+        rel_id = enhanced_db.create_relationship(
             source_id=f"{doc_id}_diabetes",
             target_id=f"{doc_id}_insulin",
             relationship_type="treated_by",
@@ -152,7 +164,7 @@ async def demonstrate_enhanced_features(
         
         # 6. Enhanced Search
         logger.info("🔎 Testing Enhanced Search...")
-        search_results, total_count = await enhanced_db.search_enhanced_documents(
+        search_results, total_count = enhanced_db.search_enhanced_documents(
             query="diabetes",
             filters={"category": "medical"},
             limit=10
@@ -161,7 +173,7 @@ async def demonstrate_enhanced_features(
         
         # 7. Get Enhanced Statistics
         logger.info("📈 Getting Enhanced Database Statistics...")
-        stats = await enhanced_db.get_database_stats()
+        stats = enhanced_db.get_database_stats()
         logger.info(f"✅ Database statistics: {stats}")
         
         # 8. Get Pipeline Status

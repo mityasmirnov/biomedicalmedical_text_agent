@@ -168,7 +168,7 @@ class EnhancedSQLiteManager:
     def _initialize_database(self):
         """Initialize the enhanced database with all schemas."""
         try:
-            with self._get_connection() as conn:
+            with self._get_connection_sync() as conn:
                 cursor = conn.cursor()
                 
                 # Create enhanced tables
@@ -234,7 +234,7 @@ class EnhancedSQLiteManager:
     # Enhanced Document Management
     # ============================================================================
     
-    async def create_enhanced_document(
+    def create_enhanced_document(
         self,
         title: str,
         content: str,
@@ -251,7 +251,7 @@ class EnhancedSQLiteManager:
             # Calculate checksum
             checksum = hashlib.md5(content.encode('utf-8')).hexdigest()
             
-            with self._get_connection() as conn:
+            with self._get_connection_sync() as conn:
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -354,7 +354,7 @@ class EnhancedSQLiteManager:
             logger.error(f"Error deleting enhanced document: {e}")
             raise
     
-    async def search_enhanced_documents(
+    def search_enhanced_documents(
         self,
         query: str = "",
         filters: Optional[Dict[str, Any]] = None,
@@ -365,7 +365,7 @@ class EnhancedSQLiteManager:
     ) -> Tuple[List[Dict[str, Any]], int]:
         """Search enhanced documents with advanced filtering."""
         try:
-            with self._get_connection() as conn:
+            with self._get_connection_sync() as conn:
                 cursor = conn.cursor()
                 
                 # Build WHERE clause
@@ -409,7 +409,9 @@ class EnhancedSQLiteManager:
                 cursor.execute(search_query, values)
                 rows = cursor.fetchall()
                 
-                results = [self._row_to_dict(row) for row in rows]
+                # Get column names from cursor description
+                columns = [description[0] for description in cursor.description]
+                results = [dict(zip(columns, row)) for row in rows]
                 return results, total_count
                 
         except Exception as e:
@@ -420,7 +422,7 @@ class EnhancedSQLiteManager:
     # Enhanced Extraction Management
     # ============================================================================
     
-    async def create_extraction_request(
+    def create_extraction_request(
         self,
         document_id: str,
         extraction_type: str,
@@ -432,7 +434,7 @@ class EnhancedSQLiteManager:
         try:
             request_id = f"req_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{hash(document_id)}"
             
-            with self._get_connection() as conn:
+            with self._get_connection_sync() as conn:
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -576,7 +578,7 @@ class EnhancedSQLiteManager:
     # Enhanced Analytics Management
     # ============================================================================
     
-    async def record_metric(
+    def record_metric(
         self,
         metric_name: str,
         metric_value: Optional[float] = None,
@@ -587,7 +589,7 @@ class EnhancedSQLiteManager:
     ) -> bool:
         """Record a metric for analytics."""
         try:
-            with self._get_connection() as conn:
+            with self._get_connection_sync() as conn:
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -665,7 +667,7 @@ class EnhancedSQLiteManager:
     # Enhanced Relationships Management
     # ============================================================================
     
-    async def create_relationship(
+    def create_relationship(
         self,
         source_id: str,
         target_id: str,
@@ -678,7 +680,7 @@ class EnhancedSQLiteManager:
     ) -> int:
         """Create a relationship between entities."""
         try:
-            with self._get_connection() as conn:
+            with self._get_connection_sync() as conn:
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -752,14 +754,24 @@ class EnhancedSQLiteManager:
         if hasattr(row, 'keys'):
             return {key: row[key] for key in row.keys()}
         else:
-            # Handle regular tuples
-            columns = [description[0] for description in row.description]
-            return dict(zip(columns, row))
+            # Handle regular tuples - get column names from cursor
+            try:
+                # Try to get description from cursor if available
+                if hasattr(row, 'description'):
+                    columns = [description[0] for description in row.description]
+                else:
+                    # Fallback: use generic column names
+                    columns = [f"col_{i}" for i in range(len(row))]
+                return dict(zip(columns, row))
+            except Exception:
+                # Ultimate fallback: use generic column names
+                columns = [f"col_{i}" for i in range(len(row))]
+                return dict(zip(columns, row))
     
-    async def get_database_stats(self) -> Dict[str, Any]:
+    def get_database_stats(self) -> Dict[str, Any]:
         """Get comprehensive database statistics."""
         try:
-            with self._get_connection() as conn:
+            with self._get_connection_sync() as conn:
                 cursor = conn.cursor()
                 
                 stats = {}

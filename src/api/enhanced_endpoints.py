@@ -81,26 +81,30 @@ class EnhancedSearchRequest(BaseModel):
 
 enhanced_documents_router = APIRouter()
 
+class CreateDocumentRequest(BaseModel):
+    """Request model for creating a document."""
+    title: str = Field(..., description="Document title")
+    content: str = Field(..., description="Document content")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Document metadata")
+
 @enhanced_documents_router.post("/documents", response_model=EnhancedDocumentModel)
 async def create_enhanced_document(
-    title: str = Query(..., description="Document title"),
-    content: str = Query(..., description="Document content"),
-    metadata: Optional[Dict[str, Any]] = Query(None, description="Document metadata"),
+    request: CreateDocumentRequest,
     file: Optional[UploadFile] = File(None, description="Document file")
 ) -> EnhancedDocumentModel:
     """Create a new enhanced document with comprehensive metadata."""
     try:
         # Mock implementation - in real system, this would integrate with SQLiteManager
-        document_id = f"doc_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{hash(title)}"
+        document_id = f"doc_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{hash(request.title)}"
         
         document = EnhancedDocumentModel(
             id=document_id,
-            title=title,
-            content=content,
-            metadata=metadata or {},
+            title=request.title,
+            content=request.content,
+            metadata=request.metadata or {},
             source_file=file.filename if file else None,
             file_type=file.content_type if file else None,
-            file_size=len(content.encode('utf-8'))
+            file_size=len(request.content.encode('utf-8'))
         )
         
         logger.info(f"Created enhanced document: {document_id}")
@@ -137,12 +141,16 @@ async def get_enhanced_document(document_id: str) -> EnhancedDocumentModel:
         logger.error(f"Error retrieving enhanced document: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve document: {str(e)}")
 
+class UpdateDocumentRequest(BaseModel):
+    """Request model for updating a document."""
+    title: Optional[str] = Field(None, description="Updated title")
+    content: Optional[str] = Field(None, description="Updated content")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Updated metadata")
+
 @enhanced_documents_router.put("/documents/{document_id}", response_model=EnhancedDocumentModel)
 async def update_enhanced_document(
     document_id: str,
-    title: Optional[str] = Query(None, description="Updated title"),
-    content: Optional[str] = Query(None, description="Updated content"),
-    metadata: Optional[Dict[str, Any]] = Query(None, description="Updated metadata")
+    request: UpdateDocumentRequest
 ) -> EnhancedDocumentModel:
     """Update an enhanced document."""
     try:
@@ -153,9 +161,9 @@ async def update_enhanced_document(
         # Get existing document (mock)
         existing_doc = EnhancedDocumentModel(
             id=document_id,
-            title=title or "Updated Document",
-            content=content or "Updated content",
-            metadata=metadata or {"source": "mock", "category": "updated"},
+            title=request.title or "Updated Document",
+            content=request.content or "Updated content",
+            metadata=request.metadata or {"source": "mock", "category": "updated"},
             processing_status="updated",
             updated_at=datetime.utcnow()
         )

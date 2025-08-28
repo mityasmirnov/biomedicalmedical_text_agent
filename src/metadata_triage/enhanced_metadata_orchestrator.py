@@ -20,8 +20,8 @@ import traceback
 # Import core components
 from .metadata_orchestrator import MetadataOrchestrator
 from .abstract_classifier import AbstractClassifier
-from .concept_scorer import ConceptScorer
-from .deduplicator import Deduplicator
+from .concept_scorer import ConceptDensityScorer
+from .deduplicator import DocumentDeduplicator
 from .europepmc_client import EuropePMCClient
 from .pubmed_client import PubMedClient
 
@@ -107,8 +107,8 @@ class EnhancedMetadataOrchestrator:
         
         # Enhanced pipeline components
         self.enhanced_classifiers: Dict[str, AbstractClassifier] = {}
-        self.enhanced_scorers: Dict[str, ConceptScorer] = {}
-        self.enhanced_deduplicators: Dict[str, Deduplicator] = {}
+        self.enhanced_scorers: Dict[str, ConceptDensityScorer] = {}
+        self.enhanced_deduplicators: Dict[str, DocumentDeduplicator] = {}
         
         # Enhanced processing queue
         self.processing_queue: asyncio.Queue = asyncio.Queue()

@@ -16,9 +16,9 @@ from enum import Enum
 
 # Import core components
 from .extractor import LangExtractEngine
-from .normalizer import Normalizer
-from .schema_classes import ExtractionSchema
-from .visualizer import Visualizer
+from .normalizer import BiomedicNormalizer
+from .schema_classes import BiomedicExtractionClasses
+from .visualizer import ExtractionVisualizer
 
 # Import enhanced components
 from database.enhanced_sqlite_manager import EnhancedSQLiteManager
@@ -87,8 +87,8 @@ class EnhancedLangExtractIntegration:
         
         # Initialize core LangExtract components
         self.extractor = LangExtractEngine()
-        self.normalizer = Normalizer()
-        self.visualizer = Visualizer()
+        self.normalizer = BiomedicNormalizer()
+        self.visualizer = ExtractionVisualizer()
         
         # Enhanced extraction configuration
         self.extraction_config = self.config.get("extraction", {})
@@ -167,7 +167,7 @@ class EnhancedLangExtractIntegration:
             self.active_extractions[request_id] = request
             
             # Record in database
-            await self.enhanced_db_manager.create_extraction_request(
+            self.enhanced_db_manager.create_extraction_request(
                 document_id=document_id,
                 extraction_type=f"enhanced_{mode.value}",
                 parameters={
