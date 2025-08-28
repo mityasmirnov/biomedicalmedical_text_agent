@@ -44,8 +44,6 @@ __all__ = [
     'ExtractionVisualizer'
 ]
 
-<<<<<<< Current (Your changes)
-=======
 # Add enhanced exports if available
 if ENHANCED_AVAILABLE:
     __all__.extend([
@@ -56,4 +54,3 @@ if ENHANCED_AVAILABLE:
         'ValidationData'
     ])
 
->>>>>>> Incoming (Background Agent changes)

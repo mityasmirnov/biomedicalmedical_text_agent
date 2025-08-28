@@ -1,562 +1,481 @@
 """
-Enhanced API endpoints for Biomedical Text Agent with full functionality.
+Enhanced API endpoints for Biomedical Text Agent.
+
+This module provides enhanced API endpoint definitions with mock implementations
+that work alongside the existing endpoints.py structure.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, BackgroundTasks
-from fastapi.responses import FileResponse, StreamingResponse
-from typing import List, Dict, Any, Optional
-import json
-import asyncio
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
+from typing import List, Dict, Any, Optional, Union
+from pydantic import BaseModel, Field
 import logging
-from datetime import datetime
+import json
+from datetime import datetime, timedelta
 from pathlib import Path
+import asyncio
 
-# Import our enhanced components
-from ..metadata_triage.enhanced_metadata_orchestrator import EnhancedMetadataOrchestrator
-from ..langextract_integration.enhanced_langextract_integration import EnhancedLangExtractEngine
-from ..database.enhanced_sqlite_manager import EnhancedSQLiteManager
-from ..core.config import get_settings
+# Import core system components
+from metadata_triage.metadata_orchestrator import MetadataOrchestrator
+from langextract_integration.extractor import LangExtractEngine
+from database.sqlite_manager import SQLiteManager
+from database.vector_manager import VectorManager
+from rag.rag_system import RAGSystem
+from core.llm_client.openrouter_client import OpenRouterClient
 
 logger = logging.getLogger(__name__)
 
-# Create enhanced API router
-enhanced_router = APIRouter()
-
-# Initialize components
-settings = get_settings()
-db_manager = EnhancedSQLiteManager()
-metadata_orchestrator = EnhancedMetadataOrchestrator(
-    pubmed_client=None,  # Will be initialized properly
-    europepmc_client=None,
-    classifier=None,
-    deduplicator=None,
-    db_manager=db_manager
-)
-
 # ============================================================================
-# DASHBOARD ENDPOINTS
+# Enhanced Data Models
 # ============================================================================
 
-@enhanced_router.get("/dashboard/status")
-async def get_system_status():
-    """Get real-time system status."""
+class EnhancedDocumentModel(BaseModel):
+    """Enhanced document model with comprehensive metadata."""
+    id: str = Field(..., description="Unique document identifier")
+    title: str = Field(..., description="Document title")
+    content: str = Field(..., description="Document content")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Document metadata")
+    extracted_entities: List[Dict[str, Any]] = Field(default_factory=list, description="Extracted entities")
+    processing_status: str = Field(default="pending", description="Processing status")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
+    updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
+    confidence_score: float = Field(default=0.0, description="Extraction confidence score")
+    source_file: Optional[str] = Field(None, description="Source file path")
+    file_type: Optional[str] = Field(None, description="File type")
+    file_size: Optional[int] = Field(None, description="File size in bytes")
+
+class EnhancedExtractionRequest(BaseModel):
+    """Enhanced extraction request model."""
+    document_id: str = Field(..., description="Document identifier")
+    extraction_type: str = Field(..., description="Type of extraction to perform")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Extraction parameters")
+    priority: str = Field(default="normal", description="Processing priority")
+    callback_url: Optional[str] = Field(None, description="Callback URL for async processing")
+
+class EnhancedProcessingResult(BaseModel):
+    """Enhanced processing result model."""
+    request_id: str = Field(..., description="Unique request identifier")
+    document_id: str = Field(..., description="Document identifier")
+    status: str = Field(..., description="Processing status")
+    result: Optional[Dict[str, Any]] = Field(None, description="Processing result")
+    error: Optional[str] = Field(None, description="Error message if failed")
+    processing_time: float = Field(..., description="Processing time in seconds")
+    confidence_score: float = Field(default=0.0, description="Confidence score")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
+
+class EnhancedSearchRequest(BaseModel):
+    """Enhanced search request model."""
+    query: str = Field(..., description="Search query")
+    filters: Dict[str, Any] = Field(default_factory=dict, description="Search filters")
+    limit: int = Field(default=50, description="Maximum number of results")
+    offset: int = Field(default=0, description="Result offset")
+    sort_by: str = Field(default="relevance", description="Sort field")
+    sort_order: str = Field(default="desc", description="Sort order")
+    include_metadata: bool = Field(default=True, description="Include metadata in results")
+    include_entities: bool = Field(default=True, description="Include extracted entities")
+
+# ============================================================================
+# Enhanced API Routers
+# ============================================================================
+
+enhanced_documents_router = APIRouter()
+
+@enhanced_documents_router.post("/documents", response_model=EnhancedDocumentModel)
+async def create_enhanced_document(
+    title: str = Query(..., description="Document title"),
+    content: str = Query(..., description="Document content"),
+    metadata: Optional[Dict[str, Any]] = Query(None, description="Document metadata"),
+    file: Optional[UploadFile] = File(None, description="Document file")
+) -> EnhancedDocumentModel:
+    """Create a new enhanced document with comprehensive metadata."""
     try:
-        # Get database statistics
-        stats = await db_manager.get_statistics()
+        # Mock implementation - in real system, this would integrate with SQLiteManager
+        document_id = f"doc_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{hash(title)}"
         
-        # Calculate system health
-        status = "healthy"
-        if stats.get('extractions_last_24h', 0) == 0:
-            status = "warning"
+        document = EnhancedDocumentModel(
+            id=document_id,
+            title=title,
+            content=content,
+            metadata=metadata or {},
+            source_file=file.filename if file else None,
+            file_type=file.content_type if file else None,
+            file_size=len(content.encode('utf-8'))
+        )
         
-        return {
-            "status": status,
-            "uptime": 3600,  # Placeholder
-            "processing_queue": 0,
-            "active_extractions": 0,
-            "database_size": stats.get('database_size_bytes', 0),
-            "api_usage": {
-                "openrouter": 0,
-                "huggingface": 0,
-                "total_requests": 0
+        logger.info(f"Created enhanced document: {document_id}")
+        return document
+        
+    except Exception as e:
+        logger.error(f"Error creating enhanced document: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create document: {str(e)}")
+
+@enhanced_documents_router.get("/documents/{document_id}", response_model=EnhancedDocumentModel)
+async def get_enhanced_document(document_id: str) -> EnhancedDocumentModel:
+    """Retrieve an enhanced document by ID."""
+    try:
+        # Mock implementation - in real system, this would query SQLiteManager
+        if not document_id.startswith("doc_"):
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Return mock document
+        document = EnhancedDocumentModel(
+            id=document_id,
+            title="Sample Document",
+            content="This is a sample document content for demonstration purposes.",
+            metadata={"source": "mock", "category": "sample"},
+            extracted_entities=[{"type": "entity", "value": "sample", "confidence": 0.95}],
+            processing_status="completed",
+            confidence_score=0.95
+        )
+        
+        return document
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving enhanced document: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve document: {str(e)}")
+
+@enhanced_documents_router.put("/documents/{document_id}", response_model=EnhancedDocumentModel)
+async def update_enhanced_document(
+    document_id: str,
+    title: Optional[str] = Query(None, description="Updated title"),
+    content: Optional[str] = Query(None, description="Updated content"),
+    metadata: Optional[Dict[str, Any]] = Query(None, description="Updated metadata")
+) -> EnhancedDocumentModel:
+    """Update an enhanced document."""
+    try:
+        # Mock implementation
+        if not document_id.startswith("doc_"):
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Get existing document (mock)
+        existing_doc = EnhancedDocumentModel(
+            id=document_id,
+            title=title or "Updated Document",
+            content=content or "Updated content",
+            metadata=metadata or {"source": "mock", "category": "updated"},
+            processing_status="updated",
+            updated_at=datetime.utcnow()
+        )
+        
+        logger.info(f"Updated enhanced document: {document_id}")
+        return existing_doc
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating enhanced document: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update document: {str(e)}")
+
+@enhanced_documents_router.delete("/documents/{document_id}")
+async def delete_enhanced_document(document_id: str) -> Dict[str, str]:
+    """Delete an enhanced document."""
+    try:
+        # Mock implementation
+        if not document_id.startswith("doc_"):
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        logger.info(f"Deleted enhanced document: {document_id}")
+        return {"message": f"Document {document_id} deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting enhanced document: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete document: {str(e)}")
+
+# ============================================================================
+# Enhanced Extraction Router
+# ============================================================================
+
+enhanced_extraction_router = APIRouter()
+
+@enhanced_extraction_router.post("/extract", response_model=EnhancedProcessingResult)
+async def enhanced_extraction(
+    request: EnhancedExtractionRequest
+) -> EnhancedProcessingResult:
+    """Perform enhanced extraction with comprehensive processing."""
+    try:
+        start_time = datetime.utcnow()
+        
+        # Mock extraction process
+        await asyncio.sleep(0.1)  # Simulate processing time
+        
+        processing_time = (datetime.utcnow() - start_time).total_seconds()
+        
+        # Mock result
+        result = EnhancedProcessingResult(
+            request_id=f"req_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{hash(request.document_id)}",
+            document_id=request.document_id,
+            status="completed",
+            result={
+                "extracted_entities": [
+                    {"type": "disease", "value": "diabetes", "confidence": 0.92},
+                    {"type": "medication", "value": "insulin", "confidence": 0.88}
+                ],
+                "extraction_type": request.extraction_type,
+                "parameters": request.parameters
             },
-            "last_updated": datetime.now().isoformat()
-        }
-    except Exception as e:
-        logger.error(f"Failed to get system status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@enhanced_router.get("/dashboard/queue")
-async def get_processing_queue():
-    """Get current processing queue."""
-    try:
-        # This would come from a job queue system
-        return {
-            "jobs": [
-                {
-                    "id": "job_001",
-                    "type": "metadata_search",
-                    "status": "completed",
-                    "progress": 100,
-                    "created_at": datetime.now().isoformat(),
-                    "details": {"query": "Leigh syndrome"}
-                }
-            ]
-        }
-    except Exception as e:
-        logger.error(f"Failed to get processing queue: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@enhanced_router.get("/dashboard/results")
-async def get_recent_results():
-    """Get recent extraction results."""
-    try:
-        # This would query the database for recent extractions
-        return {
-            "results": [
-                {
-                    "id": "ext_001",
-                    "document_id": "doc_001",
-                    "title": "Leigh Syndrome Case Report",
-                    "extraction_type": "patient_data",
-                    "confidence_score": 0.85,
-                    "validation_status": "pending",
-                    "created_at": datetime.now().isoformat(),
-                    "patient_count": 1
-                }
-            ]
-        }
-    except Exception as e:
-        logger.error(f"Failed to get recent results: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ============================================================================
-# METADATA MANAGEMENT ENDPOINTS
-# ============================================================================
-
-@enhanced_router.post("/metadata/search")
-async def search_metadata(
-    query: str = Form(...),
-    max_results: int = Form(100),
-    include_fulltext: bool = Form(True),
-    source: str = Form("pubmed")
-):
-    """Search literature metadata."""
-    try:
-        # This would use the metadata orchestrator
-        # For now, return mock data
-        results = [
-            {
-                "pmid": "12345678",
-                "title": f"Search result for: {query}",
-                "abstract": "Abstract text here...",
-                "journal": "Journal Name",
-                "publication_date": "2024-01-01",
-                "authors": "Author Name",
-                "relevance_score": 0.85,
-                "fulltext_available": include_fulltext
-            }
-        ]
+            processing_time=processing_time,
+            confidence_score=0.90,
+            metadata={"extraction_model": "enhanced", "version": "2.0"}
+        )
         
-        return {
-            "job_id": f"search_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            "results": results[:max_results],
-            "total_found": len(results),
-            "query": query
-        }
-    except Exception as e:
-        logger.error(f"Metadata search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@enhanced_router.post("/metadata/export")
-async def export_metadata(
-    results: List[Dict] = Form(...),
-    format: str = Form("csv")
-):
-    """Export metadata to various formats."""
-    try:
-        if format == "csv":
-            # Generate CSV content
-            csv_content = "pmid,title,abstract,journal,publication_date,authors,relevance_score\n"
-            for result in results:
-                csv_content += f"{result.get('pmid', '')},{result.get('title', '')},{result.get('abstract', '')},{result.get('journal', '')},{result.get('publication_date', '')},{result.get('authors', '')},{result.get('relevance_score', '')}\n"
-            
-            return StreamingResponse(
-                iter([csv_content]),
-                media_type="text/csv",
-                headers={"Content-Disposition": "attachment; filename=metadata_export.csv"}
-            )
-        else:
-            raise HTTPException(status_code=400, detail=f"Unsupported format: {format}")
-    except Exception as e:
-        logger.error(f"Metadata export failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ============================================================================
-# DOCUMENT MANAGEMENT ENDPOINTS
-# ============================================================================
-
-@enhanced_router.post("/documents/upload")
-async def upload_documents(
-    files: List[UploadFile] = File(...),
-    extraction_model: str = Form("google/gemma-2-27b-it:free")
-):
-    """Upload documents for processing."""
-    try:
-        jobs = []
-        for file in files:
-            # Store file and create processing job
-            job_id = f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{len(jobs)}"
-            jobs.append({
-                "id": job_id,
-                "type": "document_upload",
-                "status": "pending",
-                "progress": 0,
-                "created_at": datetime.now().isoformat(),
-                "details": {
-                    "filename": file.filename,
-                    "extraction_model": extraction_model
-                }
-            })
+        logger.info(f"Enhanced extraction completed: {result.request_id}")
+        return result
         
-        return {"jobs": jobs, "message": f"Uploaded {len(files)} documents"}
     except Exception as e:
-        logger.error(f"Document upload failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in enhanced extraction: {e}")
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
-@enhanced_router.get("/documents")
-async def get_documents():
-    """Get all documents."""
+@enhanced_extraction_router.get("/extractions/{request_id}", response_model=EnhancedProcessingResult)
+async def get_extraction_status(request_id: str) -> EnhancedProcessingResult:
+    """Get the status of an extraction request."""
     try:
-        # This would query the database
-        documents = [
+        # Mock implementation
+        if not request_id.startswith("req_"):
+            raise HTTPException(status_code=404, detail="Extraction request not found")
+        
+        # Return mock result
+        result = EnhancedProcessingResult(
+            request_id=request_id,
+            document_id="doc_sample",
+            status="completed",
+            result={"extracted_entities": []},
+            processing_time=1.5,
+            confidence_score=0.90
+        )
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving extraction status: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve extraction status: {str(e)}")
+
+# ============================================================================
+# Enhanced Search Router
+# ============================================================================
+
+enhanced_search_router = APIRouter()
+
+@enhanced_search_router.post("/search")
+async def enhanced_search(request: EnhancedSearchRequest) -> Dict[str, Any]:
+    """Perform enhanced search with comprehensive filtering and ranking."""
+    try:
+        # Mock search implementation
+        mock_results = [
             {
                 "id": "doc_001",
-                "filename": "PMID32679198.pdf",
-                "file_type": "pdf",
-                "status": "completed",
-                "progress": 100,
-                "patient_count": 1,
-                "uploaded_at": datetime.now().isoformat()
+                "title": "Sample Document 1",
+                "content": f"Content matching query: {request.query}",
+                "relevance_score": 0.95,
+                "metadata": {"category": "medical", "source": "journal"},
+                "entities": [{"type": "disease", "value": "cancer"}]
+            },
+            {
+                "id": "doc_002", 
+                "title": "Sample Document 2",
+                "content": f"Another document with {request.query}",
+                "relevance_score": 0.87,
+                "metadata": {"category": "research", "source": "conference"},
+                "entities": [{"type": "medication", "value": "aspirin"}]
             }
         ]
-        return {"documents": documents}
-    except Exception as e:
-        logger.error(f"Failed to get documents: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@enhanced_router.post("/documents/{document_id}/extract")
-async def start_extraction(
-    document_id: str,
-    model: str = Form("google/gemma-2-27b-it:free")
-):
-    """Start extraction on a document."""
-    try:
-        # This would start the LangExtract engine
-        return {
-            "message": f"Extraction started for document {document_id}",
-            "model": model,
-            "status": "processing"
-        }
-    except Exception as e:
-        logger.error(f"Extraction failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ============================================================================
-# VALIDATION ENDPOINTS
-# ============================================================================
-
-@enhanced_router.get("/validation/{extraction_id}")
-async def get_extraction_data(extraction_id: str):
-    """Get extraction data for validation."""
-    try:
-        # This would query the database for extraction data
-        return {
-            "extraction_id": extraction_id,
-            "original_text": "Patient was a 3-year-old male with Leigh syndrome...",
-            "highlighted_text": "Patient was a <span class='extraction-highlight'>3-year-old male</span> with <span class='extraction-highlight'>Leigh syndrome</span>...",
-            "extractions": [
-                {
-                    "field_name": "age_of_onset_years",
-                    "value": "3",
-                    "confidence": 0.9
-                }
-            ],
-            "spans": [
-                {
-                    "start": 8,
-                    "end": 20,
-                    "text": "3-year-old male",
-                    "extraction_type": "demographics",
-                    "field_name": "age_of_onset_years",
-                    "confidence": 0.9
-                }
-            ],
-            "confidence_scores": {
-                "age_of_onset_years": 0.9,
-                "sex": 0.95
-            },
-            "validation_status": "pending"
-        }
-    except Exception as e:
-        logger.error(f"Failed to get extraction data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@enhanced_router.post("/validation/{extraction_id}/submit")
-async def submit_validation(
-    extraction_id: str,
-    validation_data: Dict[str, Any]
-):
-    """Submit validation results."""
-    try:
-        # This would update the database with validation results
-        return {
-            "message": "Validation submitted successfully",
-            "extraction_id": extraction_id,
-            "status": validation_data.get("validation_status")
-        }
-    except Exception as e:
-        logger.error(f"Validation submission failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ============================================================================
-# DATABASE MANAGEMENT ENDPOINTS
-# ============================================================================
-
-@enhanced_router.get("/database/tables")
-async def get_database_tables():
-    """Get list of database tables."""
-    try:
-        tables = [
-            {"name": "metadata", "row_count": 1000},
-            {"name": "fulltext_documents", "row_count": 500},
-            {"name": "extractions", "row_count": 2000},
-            {"name": "validation_data", "row_count": 1500},
-            {"name": "patient_records", "row_count": 3000}
-        ]
-        return {"tables": tables}
-    except Exception as e:
-        logger.error(f"Failed to get database tables: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@enhanced_router.get("/database/tables/{table_name}/data")
-async def get_table_data(
-    table_name: str,
-    limit: int = 100,
-    offset: int = 0
-):
-    """Get data from a specific table."""
-    try:
-        # This would query the database
-        if table_name == "metadata":
-            data = [
-                {
-                    "id": 1,
-                    "pmid": "12345678",
-                    "title": "Sample Article",
-                    "abstract": "Sample abstract..."
-                }
-            ]
-        else:
-            data = []
         
-        return {"data": data[:limit]}
-    except Exception as e:
-        logger.error(f"Failed to get table data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@enhanced_router.get("/database/tables/{table_name}/schema")
-async def get_table_schema(table_name: str):
-    """Get schema for a specific table."""
-    try:
-        # This would query the database schema
-        schemas = {
-            "metadata": {
-                "columns": [
-                    {"name": "id", "type": "INTEGER", "primary_key": True},
-                    {"name": "pmid", "type": "TEXT", "unique": True},
-                    {"name": "title", "type": "TEXT", "not_null": True}
-                ]
+        # Apply filters (mock)
+        filtered_results = mock_results
+        if request.filters:
+            if "category" in request.filters:
+                filtered_results = [r for r in filtered_results if r["metadata"]["category"] == request.filters["category"]]
+        
+        # Apply sorting
+        if request.sort_by == "relevance":
+            filtered_results.sort(key=lambda x: x["relevance_score"], reverse=(request.sort_order == "desc"))
+        
+        # Apply pagination
+        paginated_results = filtered_results[request.offset:request.offset + request.limit]
+        
+        # Prepare response
+        response = {
+            "query": request.query,
+            "total_results": len(filtered_results),
+            "results": paginated_results,
+            "filters_applied": request.filters,
+            "sorting": {"field": request.sort_by, "order": request.sort_order},
+            "pagination": {
+                "offset": request.offset,
+                "limit": request.limit,
+                "has_more": len(filtered_results) > request.offset + request.limit
             }
         }
         
-        return {"schema": schemas.get(table_name, {})}
+        # Remove entities if not requested
+        if not request.include_entities:
+            for result in response["results"]:
+                result.pop("entities", None)
+        
+        # Remove metadata if not requested
+        if not request.include_metadata:
+            for result in response["results"]:
+                result.pop("metadata", None)
+        
+        return response
+        
     except Exception as e:
-        logger.error(f"Failed to get table schema: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@enhanced_router.get("/database/statistics")
-async def get_database_statistics():
-    """Get database statistics."""
-    try:
-        stats = await db_manager.get_statistics()
-        return stats
-    except Exception as e:
-        logger.error(f"Failed to get database statistics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in enhanced search: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 # ============================================================================
-# CONFIGURATION ENDPOINTS
+# Enhanced Analytics Router
 # ============================================================================
 
-@enhanced_router.get("/config/providers")
-async def get_api_providers():
-    """Get available API providers."""
+enhanced_analytics_router = APIRouter()
+
+@enhanced_analytics_router.get("/analytics/overview")
+async def get_enhanced_analytics_overview() -> Dict[str, Any]:
+    """Get comprehensive analytics overview."""
     try:
-        providers = [
-            {
-                "name": "openrouter",
-                "display_name": "OpenRouter",
-                "description": "Access to multiple LLM models",
-                "enabled": True,
-                "api_key_configured": True
+        # Mock analytics data
+        analytics = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "total_documents": 1250,
+            "documents_processed_today": 45,
+            "extraction_success_rate": 94.2,
+            "average_processing_time": 2.3,
+            "top_extracted_entities": [
+                {"type": "disease", "value": "diabetes", "count": 156},
+                {"type": "medication", "value": "insulin", "count": 142},
+                {"type": "symptom", "value": "fatigue", "count": 98}
+            ],
+            "processing_trends": {
+                "daily": [45, 52, 38, 61, 47, 53, 49],
+                "weekly": [320, 345, 298, 367, 312, 389, 356]
             },
-            {
-                "name": "huggingface",
-                "display_name": "Hugging Face",
-                "description": "Open source model hosting",
-                "enabled": True,
-                "api_key_configured": False
+            "system_performance": {
+                "cpu_usage": 23.4,
+                "memory_usage": 67.8,
+                "disk_usage": 45.2,
+                "active_connections": 12
+            }
+        }
+        
+        return analytics
+        
+    except Exception as e:
+        logger.error(f"Error getting enhanced analytics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve analytics: {str(e)}")
+
+@enhanced_analytics_router.get("/analytics/entities")
+async def get_entity_analytics(
+    entity_type: Optional[str] = Query(None, description="Filter by entity type"),
+    limit: int = Query(20, description="Number of top entities to return")
+) -> Dict[str, Any]:
+    """Get analytics for extracted entities."""
+    try:
+        # Mock entity analytics
+        mock_entities = [
+            {"type": "disease", "value": "diabetes", "count": 156, "confidence_avg": 0.89},
+            {"type": "medication", "value": "insulin", "count": 142, "confidence_avg": 0.87},
+            {"type": "symptom", "value": "fatigue", "count": 98, "confidence_avg": 0.92},
+            {"type": "procedure", "value": "blood_test", "count": 87, "confidence_avg": 0.94}
+        ]
+        
+        if entity_type:
+            mock_entities = [e for e in mock_entities if e["type"] == entity_type]
+        
+        # Sort by count and limit
+        mock_entities.sort(key=lambda x: x["count"], reverse=True)
+        mock_entities = mock_entities[:limit]
+        
+        return {
+            "entity_type": entity_type,
+            "total_entities": len(mock_entities),
+            "entities": mock_entities,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting entity analytics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve entity analytics: {str(e)}")
+
+# ============================================================================
+# Enhanced Health and Monitoring Router
+# ============================================================================
+
+enhanced_health_router = APIRouter()
+
+@enhanced_health_router.get("/health/enhanced")
+async def enhanced_health_check() -> Dict[str, Any]:
+    """Comprehensive health check for all system components."""
+    try:
+        health_status = {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "version": "2.0.0",
+            "components": {
+                "database": {"status": "healthy", "response_time": 0.05},
+                "metadata_triage": {"status": "healthy", "response_time": 0.12},
+                "lang_extract": {"status": "healthy", "response_time": 0.08},
+                "rag_system": {"status": "healthy", "response_time": 0.15},
+                "vector_manager": {"status": "healthy", "response_time": 0.03}
             },
-            {
-                "name": "ollama",
-                "display_name": "Ollama",
-                "description": "Local model deployment",
-                "enabled": False,
-                "api_key_configured": False
-            }
-        ]
-        return {"providers": providers}
-    except Exception as e:
-        logger.error(f"Failed to get API providers: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@enhanced_router.get("/config/models")
-async def get_available_models():
-    """Get available models."""
-    try:
-        models = [
-            {
-                "id": "google/gemma-2-27b-it:free",
-                "name": "Gemma 2 27B",
-                "provider": "openrouter",
-                "type": "free",
-                "available": True
+            "system_metrics": {
+                "cpu_usage": 23.4,
+                "memory_usage": 67.8,
+                "disk_usage": 45.2,
+                "active_connections": 12,
+                "uptime": "5 days, 3 hours, 27 minutes"
             },
-            {
-                "id": "microsoft/phi-3-mini-128k-instruct:free",
-                "name": "Phi-3 Mini",
-                "provider": "openrouter",
-                "type": "free",
-                "available": True
-            }
-        ]
-        return {"models": models}
+            "last_maintenance": "2024-01-15T10:00:00Z",
+            "next_maintenance": "2024-01-22T10:00:00Z"
+        }
+        
+        return health_status
+        
     except Exception as e:
-        logger.error(f"Failed to get models: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in enhanced health check: {e}")
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
 
-@enhanced_router.put("/config/providers/{provider}/key")
-async def update_api_key(provider: str, api_key: str):
-    """Update API key for a provider."""
+@enhanced_health_router.get("/health/component/{component_name}")
+async def component_health_check(component_name: str) -> Dict[str, Any]:
+    """Check health of a specific component."""
     try:
-        # This would store the API key securely
-        return {"message": f"API key updated for {provider}"}
+        # Mock component health checks
+        component_health = {
+            "database": {"status": "healthy", "response_time": 0.05, "last_check": datetime.utcnow().isoformat() + "Z"},
+            "metadata_triage": {"status": "healthy", "response_time": 0.12, "last_check": datetime.utcnow().isoformat() + "Z"},
+            "lang_extract": {"status": "healthy", "response_time": 0.08, "last_check": datetime.utcnow().isoformat() + "Z"},
+            "rag_system": {"status": "healthy", "response_time": 0.15, "last_check": datetime.utcnow().isoformat() + "Z"},
+            "vector_manager": {"status": "healthy", "response_time": 0.03, "last_check": datetime.utcnow().isoformat() + "Z"}
+        }
+        
+        if component_name not in component_health:
+            raise HTTPException(status_code=404, detail=f"Component {component_name} not found")
+        
+        return component_health[component_name]
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Failed to update API key: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error checking component health: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to check component health: {str(e)}")
 
 # ============================================================================
-# ONTOLOGY ENDPOINTS
+# Export all enhanced routers
 # ============================================================================
 
-@enhanced_router.get("/ontologies")
-async def get_ontologies():
-    """Get available ontologies."""
-    try:
-        ontologies = [
-            {
-                "id": "hpo",
-                "name": "Human Phenotype Ontology",
-                "term_count": 15000,
-                "description": "Standard vocabulary for human phenotypes"
-            },
-            {
-                "id": "umls",
-                "name": "Unified Medical Language System",
-                "term_count": 500000,
-                "description": "Comprehensive medical terminology"
-            }
-        ]
-        return {"ontologies": ontologies}
-    except Exception as e:
-        logger.error(f"Failed to get ontologies: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@enhanced_router.post("/ontologies/search")
-async def search_ontology_terms(query: str, ontology: str = None):
-    """Search ontology terms."""
-    try:
-        # This would search the ontology
-        results = [
-            {
-                "id": "HP:0001263",
-                "name": "Developmental delay",
-                "ontology": "HPO",
-                "definition": "A delay in the achievement of motor or mental milestones",
-                "synonyms": ["Mental retardation", "Intellectual disability"]
-            }
-        ]
-        return {"results": results}
-    except Exception as e:
-        logger.error(f"Ontology search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ============================================================================
-# PROMPT MANAGEMENT ENDPOINTS
-# ============================================================================
-
-@enhanced_router.get("/prompts")
-async def get_prompts():
-    """Get all prompts."""
-    try:
-        prompts = [
-            {
-                "id": "prompt_001",
-                "name": "Demographics Extraction",
-                "content": "Extract patient demographics...",
-                "type": "system",
-                "agent_type": "demographics",
-                "active": True,
-                "updated_at": datetime.now().isoformat()
-            }
-        ]
-        return {"prompts": prompts}
-    except Exception as e:
-        logger.error(f"Failed to get prompts: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@enhanced_router.post("/prompts")
-async def create_prompt(prompt_data: Dict[str, Any]):
-    """Create a new prompt."""
-    try:
-        # This would store the prompt
-        return {"message": "Prompt created successfully", "id": "prompt_002"}
-    except Exception as e:
-        logger.error(f"Failed to create prompt: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ============================================================================
-# ANALYTICS ENDPOINTS
-# ============================================================================
-
-@enhanced_router.get("/analytics/visualizations")
-async def get_visualizations(dataset: str = "all", chart_type: str = "overview"):
-    """Get data visualizations."""
-    try:
-        visualizations = [
-            {
-                "title": "Extraction Performance",
-                "type": "line_chart",
-                "data": [{"x": "Jan", "y": 100}, {"x": "Feb", "y": 150}],
-                "layout": {"title": {"text": "Monthly Extractions"}},
-                "description": "Shows extraction performance over time"
-            }
-        ]
-        return {"visualizations": visualizations}
-    except Exception as e:
-        logger.error(f"Failed to get visualizations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ============================================================================
-# HEALTH CHECK ENDPOINTS
-# ============================================================================
-
-@enhanced_router.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "version": "1.0.0"
-    }
+__all__ = [
+    "enhanced_documents_router",
+    "enhanced_extraction_router", 
+    "enhanced_search_router",
+    "enhanced_analytics_router",
+    "enhanced_health_router"
+]

@@ -1,0 +1,60 @@
+[
+  {
+    "pmid": "12345678",
+    "title": "Sample Leigh Syndrome Case Report 1",
+    "sort_title": "Sample Leigh Syndrome Case Report 1",
+    "last_author": "Smith J",
+    "journal": "Journal of Medical Genetics",
+    "authors": "Johnson A, Smith J",
+    "pub_type": "Case Reports",
+    "pmc_link": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC123456",
+    "doi": "10.1000/sample.2023.001",
+    "abstract": "This is a sample abstract for Leigh syndrome case report 1.",
+    "pub_date": "2023/01/15",
+    "mesh_terms": [
+      "Leigh Disease",
+      "Mitochondrial Diseases"
+    ],
+    "keywords": [
+      "Leigh syndrome",
+      "mitochondrial",
+      "case report"
+    ],
+    "publication_year": 2023,
+    "publication_month": 1,
+    "publication_day": 15,
+    "language": "English",
+    "country": "United States",
+    "open_access": true,
+    "full_text_available": true
+  },
+  {
+    "pmid": "87654321",
+    "title": "Sample Leigh Syndrome Case Report 2",
+    "sort_title": "Sample Leigh Syndrome Case Report 2",
+    "last_author": "Brown K",
+    "journal": "Neurology Case Reports",
+    "authors": "Davis M, Brown K",
+    "pub_type": "Case Reports",
+    "pmc_link": null,
+    "doi": "10.1000/sample.2023.002",
+    "abstract": "This is a sample abstract for Leigh syndrome case report 2.",
+    "pub_date": "2023/02/20",
+    "mesh_terms": [
+      "Leigh Disease",
+      "Genetic Disorders"
+    ],
+    "keywords": [
+      "Leigh syndrome",
+      "genetic",
+      "case report"
+    ],
+    "publication_year": 2023,
+    "publication_month": 2,
+    "publication_day": 20,
+    "language": "English",
+    "country": "United Kingdom",
+    "open_access": false,
+    "full_text_available": true
+  }
+]

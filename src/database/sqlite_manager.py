@@ -631,8 +631,6 @@ class SQLiteManager:
                 success=False,
                 error=f"Export failed: {str(e)}"
             )
-<<<<<<< Current (Your changes)
-=======
     
     # Validation interface methods for enhanced LangExtract
     async def store_validation_data(self, validation_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -860,100 +858,4 @@ class SQLiteManager:
         except Exception as e:
             log.error(f"Failed to update extraction data: {e}")
             raise
-    
-    async def get_validation_statistics(self) -> Dict[str, Any]:
-        """Get validation statistics from the database."""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                
-                # Get total extractions
-                cursor.execute("SELECT COUNT(*) FROM validation_data")
-                total_extractions = cursor.fetchone()[0]
-                
-                # Get counts by status
-                cursor.execute("""
-                    SELECT validation_status, COUNT(*) 
-                    FROM validation_data 
-                    GROUP BY validation_status
-                """)
-                status_counts = dict(cursor.fetchall())
-                
-                # Get average confidence
-                cursor.execute("""
-                    SELECT AVG(CAST(confidence_scores AS REAL))
-                    FROM validation_data
-                    WHERE confidence_scores IS NOT NULL
-                """)
-                avg_confidence = cursor.fetchone()[0] or 0
-                
-                # Calculate validation rate
-                completed = status_counts.get('validated', 0) + status_counts.get('rejected', 0)
-                validation_rate = (completed / total_extractions * 100) if total_extractions > 0 else 0
-                
-                return {
-                    "total_extractions": total_extractions,
-                    "pending_validations": status_counts.get('pending', 0),
-                    "completed_validations": completed,
-                    "validated_count": status_counts.get('validated', 0),
-                    "rejected_count": status_counts.get('rejected', 0),
-                    "needs_correction_count": status_counts.get('needs_correction', 0),
-                    "average_confidence": round(avg_confidence, 2),
-                    "validation_rate": round(validation_rate, 2)
-                }
-                
-        except Exception as e:
-            log.error(f"Failed to get validation statistics: {e}")
-            return {
-                "total_extractions": 0,
-                "pending_validations": 0,
-                "completed_validations": 0,
-                "validated_count": 0,
-                "rejected_count": 0,
-                "needs_correction_count": 0,
-                "average_confidence": 0,
-                "validation_rate": 0
-            }
-    
-    async def get_extractions_by_document(self, document_id: str) -> List[Dict[str, Any]]:
-        """Get all extractions for a specific document."""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                
-                # First check if validation_data table exists
-                cursor.execute("""
-                    SELECT name FROM sqlite_master 
-                    WHERE type='table' AND name='validation_data'
-                """)
-                if not cursor.fetchone():
-                    return []
-                
-                # Get extractions linked to the document
-                cursor.execute("""
-                    SELECT 
-                        vd.id,
-                        vd.extraction_id,
-                        vd.original_text,
-                        vd.highlighted_text,
-                        vd.extractions,
-                        vd.spans,
-                        vd.confidence_scores,
-                        vd.validation_status,
-                        vd.created_at
-                    FROM validation_data vd
-                    LEFT JOIN extraction_linking el ON vd.extraction_id = el.extraction_id
-                    WHERE el.document_id = ? OR vd.extraction_id LIKE ?
-                    ORDER BY vd.created_at DESC
-                """, (document_id, f"%{document_id}%"))
-                
-                columns = [desc[0] for desc in cursor.description]
-                results = []
-                for row in cursor.fetchall():
-                    results.append(dict(zip(columns, row)))
-                
-                return results
-                
-        except Exception as e:
-            log.error(f"Failed to get extractions by document: {e}")
-            return []
+
