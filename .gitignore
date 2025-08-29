@@ -432,9 +432,27 @@ data/ontologies/hpo_cache/*.pkl
 data/metadata_triage/**/*.json
 data/metadata_triage/**/*.csv
 
+# Extraction results and intermediate processing files
+data/extraction_results/**
+data/intermediate/**
+
+# Uploaded files and user content
+data/uploads/**
+
+# Enhanced UI components (development artifacts)
+enhanced_ui_components/**
+
+# Extraction class definitions (runtime generated)
+extraction_classes/**
+
+# Standalone scripts and working files
+*_working_server.py
+*_prepopulate.py
+document_processor.py
+
+# Enhanced data files
+*_enhanced.csv
+
 # Aggregated outputs and logs
 data/output/**
 logs/**
-
-# Notebook exports
-notebooks/output/**
