@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Typography,
@@ -42,6 +42,8 @@ import {
   Slider,
   Stack,
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../../services/api';
 import {
   Search as SearchIcon,
   CheckCircle as ValidIcon,
@@ -112,6 +114,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const Validation: React.FC = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -126,98 +129,42 @@ const Validation: React.FC = () => {
   const [autoValidationEnabled, setAutoValidationEnabled] = useState(false);
   const [validationThreshold, setValidationThreshold] = useState(80);
 
-  const validationItems: ValidationItem[] = [
-    {
-      id: 1,
-      type: 'phenotype',
-      value: 'HP:0001250',
-      description: 'Seizure',
-      status: 'valid',
-      confidence: 95.2,
-      source: 'PMID32679198.pdf',
-      patient: 'P001',
-      category: 'Neurological',
-      validation_date: '2024-01-15 10:35',
-      validator: 'AI Agent',
-      notes: 'HPO term correctly normalized',
-      originalText: 'The patient experienced frequent seizures with loss of consciousness.',
-      highlightedText: 'The patient experienced frequent <mark style="background-color: #4caf50; color: white; padding: 2px 4px; border-radius: 3px;">seizures</mark> with loss of consciousness.',
-      suggestions: ['HP:0001250 - Seizure', 'HP:0001251 - Generalized tonic-clonic seizure'],
-      corrections: ['HP:0001250']
-    },
-    {
-      id: 2,
-      type: 'gene',
-      value: 'MT-ATP6',
-      description: 'Mitochondrial ATP synthase 6',
-      status: 'valid',
-      confidence: 98.7,
-      source: 'PMID32679198.pdf',
-      patient: 'P001',
-      category: 'Genetic',
-      validation_date: '2024-01-15 10:35',
-      validator: 'AI Agent',
-      notes: 'HGNC gene symbol confirmed',
-      originalText: 'Genetic analysis revealed a mutation in MT-ATP6 gene.',
-      highlightedText: 'Genetic analysis revealed a mutation in <mark style="background-color: #4caf50; color: white; padding: 2px 4px; border-radius: 3px;">MT-ATP6</mark> gene.',
-      suggestions: ['MT-ATP6 - Mitochondrial ATP synthase 6', 'MT-ATP8 - Mitochondrial ATP synthase 8'],
-      corrections: ['MT-ATP6']
-    },
-    {
-      id: 3,
-      type: 'phenotype',
-      value: 'HP:0001344',
-      description: 'Abnormality of the cerebellum',
-      status: 'warning',
-      confidence: 78.3,
-      source: 'leigh_syndrome_study.pdf',
-      patient: 'P002',
-      category: 'Neurological',
-      validation_date: '2024-01-15 09:20',
-      validator: 'Human Reviewer',
-      notes: 'Low confidence - needs manual review',
-      originalText: 'MRI showed cerebellar atrophy and hypoplasia.',
-      highlightedText: 'MRI showed <mark style="background-color: #ff9800; color: white; padding: 2px 4px; border-radius: 3px;">cerebellar atrophy</mark> and <mark style="background-color: #ff9800; color: white; padding: 2px 4px; border-radius: 3px;">hypoplasia</mark>.',
-      suggestions: ['HP:0001344 - Abnormality of the cerebellum', 'HP:0001273 - Cerebellar hypoplasia'],
-      corrections: ['HP:0001344', 'HP:0001273']
-    },
-    {
-      id: 4,
-      type: 'treatment',
-      value: 'Coenzyme Q10',
-      description: 'Coenzyme Q10 supplementation',
-      status: 'invalid',
-      confidence: 45.2,
-      source: 'clinical_trial_001.pdf',
-      patient: 'P003',
-      category: 'Treatment',
-      validation_date: '2024-01-15 08:15',
-      validator: 'AI Agent',
-      notes: 'Not a standard treatment code - requires mapping',
-      originalText: 'Patient was treated with Coenzyme Q10 supplements.',
-      highlightedText: 'Patient was treated with <mark style="background-color: #f44336; color: white; padding: 2px 4px; border-radius: 3px;">Coenzyme Q10</mark> supplements.',
-      suggestions: ['CHEBI:46245 - Coenzyme Q10', 'ATC:C01EB09 - Coenzyme Q10'],
-      corrections: ['CHEBI:46245']
-    },
-    {
-      id: 5,
-      type: 'demographics',
-      value: 'Age: 32',
-      description: 'Patient age at diagnosis',
-      status: 'valid',
-      confidence: 99.1,
-      source: 'patient_case_series.pdf',
-      patient: 'P004',
-      category: 'Demographics',
-      validation_date: '2024-01-15 07:45',
-      validator: 'AI Agent',
-      notes: 'Age value within expected range',
-      originalText: 'The patient was diagnosed at age 32 years.',
-      highlightedText: 'The patient was diagnosed at <mark style="background-color: #4caf50; color: white; padding: 2px 4px; border-radius: 3px;">age 32</mark> years.',
-      suggestions: ['Age: 32 years', 'Age: 32'],
-      corrections: ['Age: 32']
-    },
-  ];
+  const [queueItems, setQueueItems] = useState<any[]>([]);
+  const [loadingQueue, setLoadingQueue] = useState(false);
+
+  useEffect(() => {
+    const loadQueue = async () => {
+      setLoadingQueue(true);
+      try {
+        const res = await api.validation.getQueue(selectedStatus === 'all' ? undefined : selectedStatus);
+        const items = (res as any)?.data?.queue || [];
+        setQueueItems(items);
+      } catch (e) {
+        console.error('Failed to load validation queue', e);
+        setQueueItems([]);
+      } finally {
+        setLoadingQueue(false);
+      }
+    };
+    loadQueue();
+  }, [selectedStatus]);
+
+  const validationItems: ValidationItem[] = useMemo(() => {
+    return queueItems.map((q, idx) => ({
+      id: q.id || idx + 1,
+      type: q.type || q.category || 'phenotype',
+      value: q.value || q.extraction_id || 'N/A',
+      description: q.description || q.field_name || 'Validation item',
+      status: q.status || q.validation_status || 'pending',
+      confidence: typeof q.confidence === 'number' ? q.confidence * 100 : (q.confidence || 0),
+      source: q.source || q.document_id || 'unknown',
+      patient: q.patient || q.patient_id || 'N/A',
+      category: q.category || 'General',
+      validation_date: q.validation_date || q.created_at || '',
+      validator: q.validator || 'AI Agent',
+      notes: q.notes || '',
+    }));
+  }, [queueItems]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -612,7 +559,7 @@ const Validation: React.FC = () => {
                           <IconButton 
                             size="small" 
                             color="primary"
-                            onClick={() => handleInteractiveValidation(item)}
+                            onClick={() => navigate(`/validation/${item.value}`)}
                           >
                             <HighlightIcon />
                           </IconButton>

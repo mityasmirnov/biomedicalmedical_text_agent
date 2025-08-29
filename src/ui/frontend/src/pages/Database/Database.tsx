@@ -150,42 +150,42 @@ const Database: React.FC = () => {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const { data: enhancedDocumentsData, isLoading: documentsLoading } = useQuery({
-    queryKey: ['database-enhanced-documents'],
-    queryFn: () => api.database.getTableData('enhanced_documents'),
+  // Prefer real patients data from backend instead of enhanced_documents placeholder
+  const { data: patientsData, isLoading: patientsLoading } = useQuery({
+    queryKey: ['database-patients'],
+    queryFn: () => api.database.getPatients({ limit: 100 }),
     refetchInterval: 30000,
   });
 
   // Extract real data from API responses
   const databaseStatus = databaseStatusData?.data || databaseStatusData;
-  const enhancedDocuments = enhancedDocumentsData?.data || enhancedDocumentsData || [];
+  const patients = (patientsData as any)?.data?.patients || [];
   
   // Debug: Log the actual data structure
   console.log('Database Status API Response:', databaseStatusData);
-  console.log('Enhanced Documents API Response:', enhancedDocumentsData);
+  console.log('Patients API Response:', patientsData);
   console.log('Extracted database status:', databaseStatus);
-  console.log('Extracted enhanced documents:', enhancedDocuments);
+  console.log('Extracted patients:', patients);
 
   // Use real data when available, fallback to mock data
   const tables: DatabaseTable[] = databaseStatus ? [
     {
-      name: 'enhanced_documents',
-      count: enhancedDocuments.length || 0,
-      description: 'Documents with extraction results and metadata',
+      name: 'patients',
+      count: patients.length || 0,
+      description: 'Patient demographic and clinical data',
       schema: [
-        { name: 'id', type: 'TEXT', nullable: false, description: 'Document ID' },
-        { name: 'title', type: 'TEXT', nullable: true, description: 'Document title' },
-        { name: 'content', type: 'TEXT', nullable: true, description: 'Document content' },
-        { name: 'metadata', type: 'TEXT', nullable: true, description: 'JSON metadata' },
-        { name: 'processing_status', type: 'TEXT', nullable: true, description: 'Processing status' },
-        { name: 'created_at', type: 'TEXT', nullable: true, description: 'Creation timestamp' },
+        { name: 'id', type: 'INTEGER', nullable: false, description: 'Primary key' },
+        { name: 'patient_id', type: 'VARCHAR(50)', nullable: false, description: 'Unique patient identifier' },
+        { name: 'age', type: 'INTEGER', nullable: true, description: 'Patient age at diagnosis' },
+        { name: 'sex', type: 'VARCHAR(1)', nullable: true, description: 'Patient sex' },
+        { name: 'diagnosis', type: 'TEXT', nullable: true, description: 'Primary diagnosis' },
       ],
       lastUpdated: databaseStatus.last_updated || 'Just now',
       size: databaseStatus.size || 'Unknown',
-      indexes: ['id', 'title', 'processing_status']
+      indexes: ['id', 'patient_id']
     },
     {
-      name: 'enhanced_extractions',
+      name: 'extractions',
       count: databaseStatus?.extractions?.total || 0,
       description: 'Extraction results from agents',
       schema: [
@@ -327,26 +327,32 @@ const Database: React.FC = () => {
 
   const handleRunQuery = async () => {
     if (!sqlQuery.trim()) return;
-    
     setIsQueryRunning(true);
-    
-    // Simulate query execution
-    setTimeout(() => {
-      const mockResults: QueryResult = {
-        columns: ['id', 'patient_id', 'age', 'gender', 'diagnosis'],
-        data: [
-          [1, 'P001', 32, 'F', 'Leigh Syndrome'],
-          [2, 'P002', 28, 'M', 'Leigh Syndrome'],
-          [3, 'P003', 45, 'F', 'Leigh Syndrome'],
-        ],
-        rowCount: 3,
-        executionTime: 0.045,
-        status: 'success'
+    try {
+      const res = await api.database.query(sqlQuery);
+      const payload = res.data || res;
+      // Normalize result shape: expect { columns: string[], rows: any[] }
+      const columns: string[] = payload.columns || Object.keys((payload.rows?.[0] || {}));
+      const data: any[] = payload.rows || [];
+      const result: QueryResult = {
+        columns,
+        data: data.map((row: any) => columns.map((c) => row[c])),
+        rowCount: data.length,
+        executionTime: payload.execution_time || 0,
+        status: 'success',
       };
-      
-      setQueryResults(mockResults);
+      setQueryResults(result);
+    } catch (e) {
+      setQueryResults({
+        columns: ['error'],
+        data: [[String(e)]],
+        rowCount: 1,
+        executionTime: 0,
+        status: 'error',
+      });
+    } finally {
       setIsQueryRunning(false);
-    }, 1500);
+    }
   };
 
   const handleSaveQuery = () => {
@@ -511,7 +517,7 @@ const Database: React.FC = () => {
           </Box>
 
           {/* Loading and Real Data Status */}
-          {(statusLoading || documentsLoading) && (
+          {(statusLoading || patientsLoading) && (
             <Alert severity="info" sx={{ mb: 2 }}>
               Loading real database data...
             </Alert>
@@ -519,7 +525,7 @@ const Database: React.FC = () => {
           
           {databaseStatus && (
             <Alert severity="success" sx={{ mb: 2 }}>
-              ✅ Real data loaded: {enhancedDocuments.length} documents, {databaseStatus?.extractions?.total || 0} extractions
+              ✅ Real data loaded: {patients.length} patients, {databaseStatus?.extractions?.total || 0} extractions
             </Alert>
           )}
 
@@ -540,10 +546,10 @@ const Database: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <Typography variant="body2">
-                    <strong>Enhanced Documents:</strong><br/>
-                    Loading: {documentsLoading ? 'Yes' : 'No'}<br/>
-                    Data: {enhancedDocumentsData ? 'Loaded' : 'None'}<br/>
-                    Count: {enhancedDocuments.length || 'N/A'}
+                    <strong>Patients:</strong><br/>
+                    Loading: {patientsLoading ? 'Yes' : 'No'}<br/>
+                    Data: {patientsData ? 'Loaded' : 'None'}<br/>
+                    Count: {patients.length || 'N/A'}
                   </Typography>
                 </Grid>
               </Grid>

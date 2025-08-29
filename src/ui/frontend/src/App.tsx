@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import Database from './pages/Database/Database';
 import Agents from './pages/Agents/Agents';
 import Documents from './pages/Documents/Documents';
 import Validation from './pages/Validation/Validation';
+import ValidationInterface from './pages/Validation/ValidationInterface';
 import Monitoring from './pages/Monitoring/Monitoring';
 import Settings from './pages/Settings/Settings';
 import Login from './pages/Auth/Login';
@@ -164,7 +165,8 @@ const AppContent: React.FC = () => {
                     <Route path="/agents/*" element={<Agents />} />
                     <Route path="/documents/*" element={<Documents />} />
                     <Route path="/documents/manage" element={<DocumentManager />} />
-                    <Route path="/validation/*" element={<Validation />} />
+                    <Route path="/validation" element={<Validation />} />
+                    <Route path="/validation/:extractionId" element={<ValidationInterface />} />
                     <Route path="/monitoring/*" element={<Monitoring />} />
                     <Route path="/analytics" element={<DataVisualization />} />
                     <Route path="/settings/*" element={<Settings />} />
