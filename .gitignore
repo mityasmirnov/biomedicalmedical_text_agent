@@ -194,10 +194,12 @@ cython_debug/
 data/database/*.db
 data/database/*.sqlite
 data/database/*.sqlite3
+data/database/*.pkl
 
 # Vector database indices
 data/vector_indices/*.index
 data/vector_indices/*.faiss
+data/vector_indices/*.pkl
 
 # Test reports and outputs
 test_report.json
@@ -431,6 +433,13 @@ data/rag/vectors/**
 data/ontologies/hpo_cache/*.db
 data/ontologies/hpo_cache/*.pkl
 
+# Comprehensive database and pickle file exclusions
+data/**/*.db
+data/**/*.pkl
+data/**/*.sqlite
+data/**/*.sqlite3
+data/**/*.index
+
 # Metadata triage generated files
 data/metadata_triage/**/*.json
 data/metadata_triage/**/*.csv
@@ -455,6 +464,22 @@ document_processor.py
 
 # Enhanced data files
 *_enhanced.csv
+
+# Runtime data files (all formats)
+*.db
+*.pkl
+*.sqlite
+*.sqlite3
+*.index
+*.faiss
+*.bin
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.joblib
+*.model
+*.weights
 
 # Aggregated outputs and logs
 data/output/**
