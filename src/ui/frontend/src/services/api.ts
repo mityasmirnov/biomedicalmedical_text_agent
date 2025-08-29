@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// The unified FastAPI server mounts the API under /api (see src/api/unified_server.py)
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -73,6 +74,10 @@ export const api = {
   // Database APIs
   database: {
     getTables: () => apiClient.get('/database/status'),
+    // The backend provides concrete endpoints like /database/status and /database/patients
+    // Expose a helper to fetch common tables like patients
+    getPatients: (params?: any) => apiClient.get('/database/patients', { params }),
+    // Keep generic access for enhanced tables if present in future
     getTableData: (table: string, params?: any) => apiClient.get(`/database/${table}`, { params }),
     getTableSchema: (table: string) => apiClient.get(`/database/${table}/schema`),
     getStatistics: () => apiClient.get('/database/status'),

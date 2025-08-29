@@ -115,64 +115,7 @@ const DataVisualization: React.FC = () => {
       setError(null);
     } catch (error) {
       console.error('Failed to load analytics data:', error);
-      setError('Failed to load analytics data - using mock data');
-      // Set mock data for development
-      setAnalyticsData({
-        extraction_stats: {
-          total_extractions: 1250,
-          successful_extractions: 1180,
-          failed_extractions: 70,
-          average_confidence: 0.87,
-          total_documents: 450
-        },
-        agent_performance: [
-          {
-            agent_id: 'extraction-agent',
-            agent_name: 'Extraction Agent',
-            total_requests: 850,
-            success_rate: 0.94,
-            average_response_time: 2.3,
-            error_rate: 0.06
-          },
-          {
-            agent_id: 'validation-agent',
-            agent_name: 'Validation Agent',
-            total_requests: 400,
-            success_rate: 0.98,
-            average_response_time: 1.8,
-            error_rate: 0.02
-          }
-        ],
-        extraction_timeline: [
-          { date: '2024-01-01', extractions: 45, documents: 12, confidence: 0.85 },
-          { date: '2024-01-02', extractions: 52, documents: 15, confidence: 0.87 },
-          { date: '2024-01-03', extractions: 38, documents: 10, confidence: 0.89 },
-          { date: '2024-01-04', extractions: 61, documents: 18, confidence: 0.86 },
-          { date: '2024-01-05', extractions: 48, documents: 14, confidence: 0.88 },
-          { date: '2024-01-06', extractions: 55, documents: 16, confidence: 0.90 },
-          { date: '2024-01-07', extractions: 42, documents: 11, confidence: 0.87 }
-        ],
-        concept_distribution: [
-          { concept: 'Patient Demographics', count: 450, percentage: 36 },
-          { concept: 'Clinical Symptoms', count: 380, percentage: 30.4 },
-          { concept: 'Laboratory Findings', count: 220, percentage: 17.6 },
-          { concept: 'Genetic Variants', count: 150, percentage: 12 },
-          { concept: 'Treatment Information', count: 50, percentage: 4 }
-        ],
-        document_types: [
-          { type: 'Case Reports', count: 280, percentage: 62.2 },
-          { type: 'Research Papers', count: 120, percentage: 26.7 },
-          { type: 'Clinical Trials', count: 35, percentage: 7.8 },
-          { type: 'Review Articles', count: 15, percentage: 3.3 }
-        ],
-        validation_stats: {
-          total_validated: 850,
-          approved: 780,
-          rejected: 45,
-          pending: 25,
-          average_validation_time: 3.2
-        }
-      });
+      setError('Failed to load analytics data.');
     } finally {
       setLoading(false);
     }
