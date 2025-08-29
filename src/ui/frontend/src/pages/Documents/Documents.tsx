@@ -70,7 +70,12 @@ const Documents: React.FC = () => {
   });
 
   // Extract documents from API response
-  const documents = Array.isArray(documentsData) ? documentsData : [];
+  const documents = Array.isArray(documentsData) ? documentsData : 
+                   (documentsData?.data && Array.isArray(documentsData.data)) ? documentsData.data : [];
+  
+  // Debug: Log the actual data structure
+  console.log('Documents API Response:', documentsData);
+  console.log('Extracted documents:', documents);
 
   // Filter and sort documents - newest first
   const filteredDocuments = documents

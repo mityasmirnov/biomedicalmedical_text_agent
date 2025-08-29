@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../services/api';
 import {
   Box,
   Typography,
@@ -138,8 +140,66 @@ const Database: React.FC = () => {
   const [isQueryRunning, setIsQueryRunning] = useState(false);
   const [savedQueries, setSavedQueries] = useState<string[]>([]);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  
+  const queryClient = useQueryClient();
 
-  const tables: DatabaseTable[] = [
+  // Fetch real database data
+  const { data: databaseStatusData, isLoading: statusLoading } = useQuery({
+    queryKey: ['database-status'],
+    queryFn: () => api.database.getStatistics(),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const { data: enhancedDocumentsData, isLoading: documentsLoading } = useQuery({
+    queryKey: ['database-enhanced-documents'],
+    queryFn: () => api.database.getTableData('enhanced_documents'),
+    refetchInterval: 30000,
+  });
+
+  // Extract real data from API responses
+  const databaseStatus = databaseStatusData?.data || databaseStatusData;
+  const enhancedDocuments = enhancedDocumentsData?.data || enhancedDocumentsData || [];
+  
+  // Debug: Log the actual data structure
+  console.log('Database Status API Response:', databaseStatusData);
+  console.log('Enhanced Documents API Response:', enhancedDocumentsData);
+  console.log('Extracted database status:', databaseStatus);
+  console.log('Extracted enhanced documents:', enhancedDocuments);
+
+  // Use real data when available, fallback to mock data
+  const tables: DatabaseTable[] = databaseStatus ? [
+    {
+      name: 'enhanced_documents',
+      count: enhancedDocuments.length || 0,
+      description: 'Documents with extraction results and metadata',
+      schema: [
+        { name: 'id', type: 'TEXT', nullable: false, description: 'Document ID' },
+        { name: 'title', type: 'TEXT', nullable: true, description: 'Document title' },
+        { name: 'content', type: 'TEXT', nullable: true, description: 'Document content' },
+        { name: 'metadata', type: 'TEXT', nullable: true, description: 'JSON metadata' },
+        { name: 'processing_status', type: 'TEXT', nullable: true, description: 'Processing status' },
+        { name: 'created_at', type: 'TEXT', nullable: true, description: 'Creation timestamp' },
+      ],
+      lastUpdated: databaseStatus.last_updated || 'Just now',
+      size: databaseStatus.size || 'Unknown',
+      indexes: ['id', 'title', 'processing_status']
+    },
+    {
+      name: 'enhanced_extractions',
+      count: databaseStatus?.extractions?.total || 0,
+      description: 'Extraction results from agents',
+      schema: [
+        { name: 'id', type: 'INTEGER', nullable: false, description: 'Primary key' },
+        { name: 'document_id', type: 'TEXT', nullable: false, description: 'Reference to document' },
+        { name: 'extraction_type', type: 'TEXT', nullable: false, description: 'Type of extraction' },
+        { name: 'result', type: 'TEXT', nullable: true, description: 'Extraction result' },
+        { name: 'confidence_score', type: 'REAL', nullable: true, description: 'Confidence score' },
+      ],
+      lastUpdated: databaseStatus?.extractions?.last_updated || 'Just now',
+      size: databaseStatus?.extractions?.size || 'Unknown',
+      indexes: ['id', 'document_id', 'extraction_type']
+    }
+  ] : [
     {
       name: 'patients',
       count: 1250,
@@ -449,6 +509,46 @@ const Database: React.FC = () => {
               </Grid>
             </Grid>
           </Box>
+
+          {/* Loading and Real Data Status */}
+          {(statusLoading || documentsLoading) && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Loading real database data...
+            </Alert>
+          )}
+          
+          {databaseStatus && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              ✅ Real data loaded: {enhancedDocuments.length} documents, {databaseStatus?.extractions?.total || 0} extractions
+            </Alert>
+          )}
+
+          {/* Debug Info - Remove in production */}
+          <Card sx={{ mb: 2, bgcolor: 'grey.100' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                🔍 Debug Info - Database API Data
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body2">
+                    <strong>Database Status:</strong><br/>
+                    Loading: {statusLoading ? 'Yes' : 'No'}<br/>
+                    Data: {databaseStatus ? 'Loaded' : 'None'}<br/>
+                    Status: {databaseStatus?.status || 'N/A'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body2">
+                    <strong>Enhanced Documents:</strong><br/>
+                    Loading: {documentsLoading ? 'Yes' : 'No'}<br/>
+                    Data: {enhancedDocumentsData ? 'Loaded' : 'None'}<br/>
+                    Count: {enhancedDocuments.length || 'N/A'}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
 
           <Grid container spacing={3}>
             <Grid item xs={12} md={8}>
