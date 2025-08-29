@@ -21,6 +21,8 @@ import {
   Collapse,
   Tooltip,
 } from '@mui/material';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../services/api';
 import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
@@ -95,43 +97,65 @@ const EnhancedDashboard: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { isConnected, connectionStatus } = useWebSocket();
+  const queryClient = useQueryClient();
   
   const [expandedMetrics, setExpandedMetrics] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [systemMetrics, setSystemMetrics] = useState<SystemMetric[]>([
+  
+  // Fetch real dashboard data
+  const { data: systemStatusData, isLoading: systemStatusLoading } = useQuery({
+    queryKey: ['dashboard-system-status'],
+    queryFn: () => api.dashboard.getSystemStatus(),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const { data: recentActivitiesData, isLoading: activitiesLoading } = useQuery({
+    queryKey: ['dashboard-recent-activities'],
+    queryFn: () => api.dashboard.getProcessingQueue(),
+    refetchInterval: 30000,
+  });
+
+  const { data: statisticsData, isLoading: statisticsLoading } = useQuery({
+    queryKey: ['dashboard-statistics'],
+    queryFn: () => api.dashboard.getRecentResults(),
+    refetchInterval: 30000,
+  });
+
+  // Real system metrics from API
+  const systemMetrics: SystemMetric[] = [
     {
-      name: 'CPU Usage',
-      value: 45.2,
-      unit: '%',
+      name: 'Total Documents',
+      value: systemStatusData?.data?.metrics?.total_documents || 0,
+      unit: '',
       status: 'normal',
       trend: 'stable',
-      change: 2.1,
+      change: 0,
     },
     {
-      name: 'Memory Usage',
-      value: 78.5,
-      unit: '%',
+      name: 'Completed Documents',
+      value: systemStatusData?.data?.metrics?.completed_documents || 0,
+      unit: '',
+      status: 'normal',
+      trend: 'stable',
+      change: 0,
+    },
+    {
+      name: 'Pending Documents',
+      value: systemStatusData?.data?.metrics?.pending_documents || 0,
+      unit: '',
       status: 'warning',
-      trend: 'up',
-      change: 5.3,
+      trend: 'stable',
+      change: 0,
     },
     {
-      name: 'Disk Usage',
-      value: 62.1,
-      unit: '%',
+      name: 'Active Agents',
+      value: systemStatusData?.data?.metrics?.total_agents || 0,
+      unit: '',
       status: 'normal',
       trend: 'stable',
-      change: 1.2,
+      change: 0,
     },
-    {
-      name: 'Network I/O',
-      value: 125.7,
-      unit: 'MB/s',
-      status: 'normal',
-      trend: 'down',
-      change: -8.4,
-    },
-  ]);
+  ];
 
   const [quickActions] = useState<QuickAction[]>([
     {
@@ -172,53 +196,50 @@ const EnhancedDashboard: React.FC = () => {
     },
   ]);
 
-  const [alerts] = useState<AlertItem[]>([
+  // Real alerts from recent activities
+  const alerts: AlertItem[] = recentActivitiesData?.data?.activities?.slice(0, 3).map((activity: any, index: number) => ({
+    id: activity.id || index.toString(),
+    severity: activity.status === 'completed' ? 'success' : 'info',
+    message: activity.description || `Activity: ${activity.type}`,
+    timestamp: activity.timestamp || 'Unknown',
+    acknowledged: false,
+  })) || [
     {
       id: '1',
-      severity: 'warning',
-      message: 'Memory usage is approaching threshold (78.5%)',
-      timestamp: '2 minutes ago',
-      acknowledged: false,
-    },
-    {
-      id: '2',
       severity: 'info',
-      message: 'New document batch processed successfully',
-      timestamp: '5 minutes ago',
-      acknowledged: true,
-    },
-    {
-      id: '3',
-      severity: 'success',
-      message: 'Data validation completed for 150 items',
-      timestamp: '10 minutes ago',
-      acknowledged: true,
-    },
-  ]);
-
-  // Sample chart data
-  const performanceData = [
-    { time: '00:00', cpu: 45, memory: 78, disk: 62 },
-    { time: '04:00', cpu: 52, memory: 82, disk: 63 },
-    { time: '08:00', cpu: 78, memory: 89, disk: 65 },
-    { time: '12:00', cpu: 85, memory: 92, disk: 67 },
-    { time: '16:00', cpu: 72, memory: 86, disk: 66 },
-    { time: '20:00', cpu: 58, memory: 79, disk: 64 },
-    { time: '24:00', cpu: 45, memory: 78, disk: 62 },
+      message: 'Loading recent activities...',
+      timestamp: 'Just now',
+      acknowledged: false,
+    }
   ];
 
-  const extractionStats = [
-    { category: 'Phenotypes', count: 1250, percentage: 35 },
-    { category: 'Genes', count: 890, percentage: 25 },
-    { category: 'Treatments', count: 720, percentage: 20 },
-    { category: 'Demographics', count: 450, percentage: 13 },
-    { category: 'Other', count: 290, percentage: 7 },
+  // Real extraction stats from API
+  const extractionStats = statisticsData?.data?.statistics?.extractions ? [
+    { category: 'Total Extractions', count: statisticsData.data.statistics.extractions.total || 0, percentage: 100 },
+    { category: 'Successful', count: statisticsData.data.statistics.extractions.successful || 0, percentage: 100 },
+  ] : [
+    { category: 'Loading...', count: 0, percentage: 0 },
+  ];
+
+  // Performance data for charts (using real data when available)
+  const performanceData = [
+    { time: '00:00', documents: systemStatusData?.data?.metrics?.total_documents || 0, extractions: statisticsData?.data?.statistics?.extractions?.total || 0 },
+    { time: '04:00', documents: systemStatusData?.data?.metrics?.total_documents || 0, extractions: statisticsData?.data?.statistics?.extractions?.total || 0 },
+    { time: '08:00', documents: systemStatusData?.data?.metrics?.total_documents || 0, extractions: statisticsData?.data?.statistics?.extractions?.total || 0 },
+    { time: '12:00', documents: systemStatusData?.data?.metrics?.total_documents || 0, extractions: statisticsData?.data?.statistics?.extractions?.total || 0 },
+    { time: '16:00', documents: systemStatusData?.data?.metrics?.total_documents || 0, extractions: statisticsData?.data?.statistics?.extractions?.total || 0 },
+    { time: '20:00', documents: systemStatusData?.data?.metrics?.total_documents || 0, extractions: statisticsData?.data?.statistics?.extractions?.total || 0 },
+    { time: '24:00', documents: systemStatusData?.data?.metrics?.total_documents || 0, extractions: statisticsData?.data?.statistics?.extractions?.total || 0 },
   ];
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Refresh all queries
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['dashboard-system-status'] }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard-recent-activities'] }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard-statistics'] }),
+    ]);
     setIsRefreshing(false);
   };
 
@@ -269,6 +290,16 @@ const EnhancedDashboard: React.FC = () => {
           <Typography variant="body1" color="text.secondary">
             Real-time monitoring and system control center
           </Typography>
+          {(systemStatusLoading || activitiesLoading || statisticsLoading) && (
+            <Alert severity="info" sx={{ mt: 1 }}>
+              Loading real-time data...
+            </Alert>
+          )}
+          {systemStatusData && (
+            <Alert severity="success" sx={{ mt: 1 }}>
+              ✅ Real data loaded: {systemStatusData?.data?.metrics?.total_documents || 0} documents, {systemStatusData?.data?.metrics?.total_agents || 0} agents
+            </Alert>
+          )}
         </Box>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <Chip
@@ -287,6 +318,41 @@ const EnhancedDashboard: React.FC = () => {
           </Button>
         </Box>
       </Box>
+
+      {/* Debug Info - Remove in production */}
+      <Card sx={{ mb: 4, bgcolor: 'grey.100' }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            🔍 Debug Info - API Data
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={4}>
+              <Typography variant="body2">
+                <strong>System Status:</strong><br/>
+                Loading: {systemStatusLoading ? 'Yes' : 'No'}<br/>
+                Data: {systemStatusData ? 'Loaded' : 'None'}<br/>
+                Documents: {systemStatusData?.data?.metrics?.total_documents || 'N/A'}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Typography variant="body2">
+                <strong>Recent Activities:</strong><br/>
+                Loading: {activitiesLoading ? 'Yes' : 'No'}<br/>
+                Data: {recentActivitiesData ? 'Loaded' : 'None'}<br/>
+                Activities: {recentActivitiesData?.data?.total || 'N/A'}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Typography variant="body2">
+                <strong>Statistics:</strong><br/>
+                Loading: {statisticsLoading ? 'Yes' : 'No'}<br/>
+                Data: {statisticsData ? 'Loaded' : 'None'}<br/>
+                Documents: {statisticsData?.data?.statistics?.documents?.total || 'N/A'}
+              </Typography>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <Card sx={{ mb: 4 }}>
@@ -399,9 +465,8 @@ const EnhancedDashboard: React.FC = () => {
                   <XAxis dataKey="time" />
                   <YAxis />
                   <RechartsTooltip />
-                  <Line type="monotone" dataKey="cpu" stroke="#8884d8" name="CPU %" />
-                  <Line type="monotone" dataKey="memory" stroke="#82ca9d" name="Memory %" />
-                  <Line type="monotone" dataKey="disk" stroke="#ffc658" name="Disk %" />
+                  <Line type="monotone" dataKey="documents" stroke="#8884d8" name="Documents" />
+                  <Line type="monotone" dataKey="extractions" stroke="#82ca9d" name="Extractions" />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>

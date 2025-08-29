@@ -235,6 +235,9 @@ notebooks/output/*.jsonl
 notebooks/output/*.xlsx
 notebooks/output/*.pdf
 
+# Large notebook files (over 100KB)
+notebooks/*.ipynb
+
 # Test outputs
 test_output/
 extraction_output/
@@ -456,3 +459,21 @@ document_processor.py
 # Aggregated outputs and logs
 data/output/**
 logs/**
+
+# =============================================================================
+# Large File Exclusions
+# =============================================================================
+
+# Files larger than 1MB (general rule)
+*.db
+*.index
+*.pkl
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.joblib
+*.faiss
+*.bin
+*.model
+*.weights
