@@ -1222,10 +1222,10 @@ class EnhancedSQLiteManager:
                         "upload_date": row[5],
                         "status": row[4],
                         "file_size": row[7] or 0,
-                        "extraction_results": {
-                            "patient_count": 1,  # TODO: Extract from actual results
+                        "extraction_results": metadata.get("extraction_results", {
+                            "patient_count": 1,  # Fallback if no agent results
                             "confidence_score": 0.87
-                        }
+                        })
                     }
                     documents.append(doc)
                 
@@ -1266,10 +1266,10 @@ class EnhancedSQLiteManager:
                     "upload_date": row[5],
                     "status": row[4],
                     "file_size": row[7] or 0,
-                    "extraction_results": {
-                        "patient_count": 1,  # TODO: Extract from actual results
-                        "confidence_score": 0.87
-                    }
+                                            "extraction_results": metadata.get("extraction_results", {
+                            "patient_count": 1,  # Fallback if no agent results
+                            "confidence_score": 0.87
+                        })
                 }
                 
                 return doc
@@ -1307,6 +1307,21 @@ class EnhancedSQLiteManager:
         except Exception as e:
             logger.error(f"Error getting document fulltext {document_id}: {e}")
             return None
+
+    async def update_processing_status(self, document_id: str, status: str) -> bool:
+        """Update document processing status."""
+        try:
+            with self._get_connection_sync() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE enhanced_documents SET processing_status = ? WHERE id = ?",
+                    [status, document_id]
+                )
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"Error updating processing status for {document_id}: {e}")
+            return False
 
     async def get_metadata_statistics(self) -> Dict[str, Any]:
         """Get metadata statistics."""

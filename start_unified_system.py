@@ -95,7 +95,7 @@ class UnifiedSystemManager:
             "pandas",
             "numpy",
             "pydantic",
-            "python-dotenv"
+            "dotenv"
         ]
         
         missing_packages = []
@@ -162,12 +162,12 @@ class UnifiedSystemManager:
             return False
     
     def start_backend_server(self) -> bool:
-        """Start the unified backend server."""
+        """Start the unified working backend server."""
         try:
-            logger.info("🚀 Starting unified backend server...")
+            logger.info("🚀 Starting unified working backend server...")
             
-            # Start the server using the unified server module
-            server_script = self.src_path / "api" / "unified_server.py"
+            # Start the server using the unified working server module
+            server_script = self.project_root / "unified_working_server.py"
             
             if not server_script.exists():
                 logger.error(f"❌ Server script not found: {server_script}")
@@ -183,8 +183,8 @@ class UnifiedSystemManager:
                 text=True
             )
             
-            # Wait a moment for server to start
-            time.sleep(3)
+            # Wait for server to start and initialize all services
+            time.sleep(10)
             
             # Check if server is running
             if self.server_process.poll() is None:
@@ -365,6 +365,10 @@ class UnifiedSystemManager:
         logger.info(f"📚 View documentation at: http://{self.host}:{self.backend_port}/api/docs")
         
         return True
+
+
+# End of UnifiedSystemManager class
+
 
 def signal_handler(signum, frame):
     """Handle shutdown signals gracefully."""

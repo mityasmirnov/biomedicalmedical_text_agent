@@ -18,9 +18,16 @@ import asyncio
 import signal
 import sys
 
-from .unified_api import api_router
-from core.unified_system_orchestrator import get_orchestrator, shutdown_orchestrator
-from core.unified_config import get_config
+try:
+    from .unified_api import api_router
+    from core.config import get_config
+except ImportError:
+    # Fallback for direct execution
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+    from src.api.unified_api import api_router
+    from src.core.config import get_config
 
 # Configure logging
 logging.basicConfig(
@@ -39,10 +46,6 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Biomedical Text Agent Unified Server...")
     
     try:
-        # Initialize the unified system orchestrator
-        orchestrator = await get_orchestrator()
-        logger.info("Unified System Orchestrator initialized successfully")
-        
         # Mount static files if they exist
         static_dir = Path("src/ui/frontend/build")
         if static_dir.exists():
@@ -59,14 +62,6 @@ async def lifespan(app: FastAPI):
     finally:
         # Shutdown
         logger.info("Shutting down Biomedical Text Agent Unified Server...")
-        
-        try:
-            # Shutdown the orchestrator
-            await shutdown_orchestrator()
-            logger.info("Unified System Orchestrator shutdown complete")
-        except Exception as e:
-            logger.error(f"Error during orchestrator shutdown: {e}")
-        
         logger.info("Server shutdown complete")
 
 def create_app() -> FastAPI:

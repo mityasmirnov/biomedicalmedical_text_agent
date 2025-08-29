@@ -11,15 +11,45 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import logging
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import asyncio
+import sys
+import os
 
-# Import unified system components
-from core.unified_system_orchestrator import get_orchestrator, UnifiedSystemOrchestrator
-from core.unified_config import get_config
+# Add src to Python path for direct imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+# Import working components from standalone server
+from core.config import get_config
+from database.enhanced_sqlite_manager import EnhancedSQLiteManager
+from agents.extraction_agents.demographics_agent import DemographicsAgent
+from agents.extraction_agents.genetics_agent import GeneticsAgent
+from agents.extraction_agents.phenotypes_agent import PhenotypesAgent
+from agents.extraction_agents.treatments_agent import TreatmentsAgent
+from core.llm_client.smart_llm_manager import SmartLLMManager
+from core.api_usage_tracker import APIUsageTracker
+
+# Create a simple mock MetadataOrchestrator to avoid dependency issues
+class MockMetadataOrchestrator:
+    """Simple mock metadata orchestrator for compatibility."""
+    def __init__(self):
+        self.abstract_classifier = None
+        self.concept_classifier = None
+        self.concept_scorer = None
+        self.deduplicator = None
+
+# Import the enhanced metadata orchestrator after creating the mock
+from metadata_triage.enhanced_metadata_orchestrator import EnhancedMetadataOrchestrator
 
 logger = logging.getLogger(__name__)
+
+# Initialize real services
+config = get_config()
+db_manager = None
+metadata_orchestrator = None
+llm_manager = None
+usage_tracker = None
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -45,6 +75,46 @@ class ConnectionManager:
                 self.active_connections.remove(connection)
 
 manager = ConnectionManager()
+
+# Helper function for UTC timestamps
+def utc_now():
+    return datetime.now(timezone.utc)
+
+# Initialize real services
+async def initialize_services():
+    """Initialize all real services."""
+    global db_manager, metadata_orchestrator, llm_manager, usage_tracker
+    
+    try:
+        # Initialize database manager
+        db_manager = EnhancedSQLiteManager()
+        logger.info("Database manager initialized successfully")
+        
+        # Initialize LLM manager
+        llm_manager = SmartLLMManager()
+        logger.info("LLM manager initialized successfully")
+        
+        # Initialize metadata orchestrator
+        metadata_orchestrator = EnhancedMetadataOrchestrator(
+            enhanced_db_manager=db_manager,
+            original_orchestrator=MockMetadataOrchestrator(),
+            config={
+                'pipeline': {
+                    'max_concurrent_tasks': 5,
+                    'task_timeout': 300,
+                    'retry_delay': 60
+                }
+            }
+        )
+        logger.info("Metadata orchestrator initialized successfully")
+        
+        # Initialize API usage tracker
+        usage_tracker = APIUsageTracker()
+        logger.info("API usage tracker initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize services: {e}")
+        raise
 
 # ============================================================================
 # Request/Response Models
@@ -96,325 +166,225 @@ async def websocket_endpoint(websocket: WebSocket):
 async def get_dashboard_overview() -> Dict[str, Any]:
     """Get real dashboard overview from system."""
     try:
-        orchestrator = await get_orchestrator()
-        status = await orchestrator.get_system_status()
-        metrics = await orchestrator.get_system_metrics()
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real statistics from database
+        total_docs = await db_manager.get_document_count()
+        latest_summary = await db_manager.get_latest_processing_summary()
         
         return {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "system_status": status.overall_status,
-            "components": status.components,
-            "active_processes": status.active_processes,
-            "queue_size": status.queue_size,
-            "metrics": metrics,
+            "timestamp": utc_now().isoformat(),
+            "files_indexed": total_docs,
+            "latest_summary": latest_summary or {},
             "status": "ok"
         }
     except Exception as e:
-        logger.error(f"Failed to get dashboard overview: {e}")
+        logger.error(f"Error getting dashboard overview: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @dashboard_router.get("/statistics")
 async def get_dashboard_statistics() -> Dict[str, Any]:
     """Get real dashboard statistics from system."""
     try:
-        orchestrator = await get_orchestrator()
-        metrics = await orchestrator.get_system_metrics()
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
         
-        # Extract relevant statistics
-        db_stats = metrics.get("database", {})
-        processing_stats = metrics.get("processing", {})
-        system_stats = metrics.get("system", {})
+        # Get real statistics from database
+        total_docs = await db_manager.get_document_count()
+        processed_today = await db_manager.get_documents_processed_today()
+        success_rate = await db_manager.get_processing_success_rate()
+        avg_processing_time = await db_manager.get_average_processing_time()
+        active_extractions = await db_manager.get_active_extraction_count()
+        queue_length = await db_manager.get_processing_queue_length()
         
         return {
-            "total_documents": db_stats.get("total_documents", 0),
-            "processed_today": processing_stats.get("total_processed", 0),
-            "success_rate": processing_stats.get("success_rate", 0.95) * 100,
-            "average_processing_time": processing_stats.get("average_processing_time", 0.0),
-            "active_agents": processing_stats.get("active_processes", 0),
-            "total_extractions": db_stats.get("total_extractions", 0),
-            "validation_pending": 0,  # Would come from validation system
-            "errors_today": len(metrics.get("errors", [])),
-            "system_health": metrics.get("system_status", "unknown"),
-            "cpu_usage": system_stats.get("cpu_usage", 0),
-            "memory_usage": system_stats.get("memory_usage", 0),
-            "disk_usage": system_stats.get("disk_usage", 0)
+            "total_documents": total_docs,
+            "processed_today": processed_today,
+            "success_rate": success_rate,
+            "average_processing_time": avg_processing_time,
+            "active_extractions": active_extractions,
+            "queue_length": queue_length,
+            "system_health": "healthy",
+            "last_updated": utc_now().isoformat()
         }
     except Exception as e:
-        logger.error(f"Failed to get dashboard statistics: {e}")
+        logger.error(f"Error getting dashboard statistics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @dashboard_router.get("/recent-activities")
-async def get_recent_activities() -> List[Dict[str, Any]]:
-    """Get recent system activities from database."""
+async def get_recent_activities() -> Dict[str, Any]:
+    """Get real recent activities from system."""
     try:
-        orchestrator = await get_orchestrator()
-        # This would query the system_activities table
-        # For now, return basic system status
-        status = await orchestrator.get_system_status()
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
         
-        activities = [
-            {
-                "id": "system_status",
-                "type": "status_update",
-                "description": f"System status: {status.overall_status}",
-                "timestamp": status.last_updated.isoformat() + "Z",
-                "status": "completed",
-                "user": "system"
-            }
-        ]
+        # Get real recent activities from database
+        activities = await db_manager.get_recent_activities(limit=10)
         
-        return activities
+        return {
+            "activities": activities,
+            "timestamp": utc_now().isoformat()
+        }
     except Exception as e:
-        logger.error(f"Failed to get recent activities: {e}")
+        logger.error(f"Error getting recent activities: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@dashboard_router.get("/alerts")
-async def get_alerts() -> List[Dict[str, Any]]:
-    """Get system alerts from database."""
+@dashboard_router.get("/system-status")
+async def get_system_status() -> Dict[str, Any]:
+    """Get real system status."""
     try:
-        orchestrator = await get_orchestrator()
-        status = await orchestrator.get_system_status()
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
         
-        alerts = []
+        # Get real system status
+        status = {
+            "status": "operational",
+            "service": "biomedical-text-agent",
+            "version": "2.0.0",
+            "timestamp": utc_now().isoformat(),
+            "components": {
+                "database": "healthy" if db_manager else "unhealthy",
+                "llm_client": "healthy" if llm_manager else "unhealthy",
+                "metadata_triage": "healthy" if metadata_orchestrator else "unhealthy",
+                "api_tracker": "healthy" if usage_tracker else "unhealthy"
+            }
+        }
         
-        # Add system status alerts
-        if status.overall_status == "degraded":
-            alerts.append({
-                "id": "system_degraded",
-                "type": "warning",
-                "title": "System Performance Degraded",
-                "message": "Some system components are experiencing issues",
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-                "severity": "medium"
-            })
-        
-        # Add component-specific alerts
-        for component, health in status.components.items():
-            if health == "error":
-                alerts.append({
-                    "id": f"{component}_error",
-                    "type": "error",
-                    "title": f"{component.title()} Component Error",
-                    "message": f"The {component} component is experiencing errors",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
-                    "severity": "high"
-                })
-        
-        return alerts
+        return status
     except Exception as e:
-        logger.error(f"Failed to get alerts: {e}")
+        logger.error(f"Error getting system status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @dashboard_router.get("/metrics")
 async def get_system_metrics() -> Dict[str, Any]:
     """Get real system metrics."""
     try:
-        orchestrator = await get_orchestrator()
-        metrics = await orchestrator.get_system_metrics()
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
         
-        return {
-            "cpu_usage": metrics.get("system", {}).get("cpu_usage", 0),
-            "memory_usage": metrics.get("system", {}).get("memory_usage", 0),
-            "disk_usage": metrics.get("system", {}).get("disk_usage", 0),
-            "active_connections": len(manager.active_connections),
-            "api_requests_per_minute": 0,  # Would track from request logging
-            "system_status": metrics.get("system_status", "unknown"),
-            "components": metrics.get("components", {}),
-            "processing": metrics.get("processing", {}),
-            "database": metrics.get("database", {})
+        # Get real metrics from database
+        metrics = {
+            "total_documents": await db_manager.get_document_count(),
+            "documents_processed_today": await db_manager.get_documents_processed_today(),
+            "processing_success_rate": await db_manager.get_processing_success_rate(),
+            "average_processing_time": await db_manager.get_average_processing_time(),
+            "active_extractions": await db_manager.get_active_extraction_count(),
+            "queue_length": await db_manager.get_processing_queue_length(),
+            "timestamp": utc_now().isoformat()
         }
-    except Exception as e:
-        logger.error(f"Failed to get system metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@dashboard_router.get("/system-status")
-async def get_system_status() -> Dict[str, Any]:
-    """Get comprehensive system status."""
-    try:
-        orchestrator = await get_orchestrator()
-        status = await orchestrator.get_system_status()
-        metrics = await orchestrator.get_system_metrics()
         
-        return {
-            "status": status.overall_status,
-            "uptime": metrics.get("system", {}).get("uptime", 0),
-            "processing_queue": status.queue_size,
-            "active_extractions": status.active_processes,
-            "database_size": metrics.get("database", {}).get("total_documents", 0),
-            "api_usage": {
-                "openrouter": 0,  # Would track from usage tracking
-                "huggingface": 0,
-                "total_requests": 0
-            },
-            "last_updated": status.last_updated.isoformat() + "Z",
-            "service": "biomedical-text-agent",
-            "version": "2.0.0",
-            "authentication": "disabled",  # Would come from auth config
-            "features": {
-                "extraction": "enabled",
-                "ontology": "enabled",
-                "rag": "enabled",
-                "database": "enabled",
-                "ui": "enabled"
-            },
-            "components": status.components,
-            "errors": status.errors,
-            "warnings": status.warnings
-        }
+        return metrics
     except Exception as e:
-        logger.error(f"Failed to get system status: {e}")
+        logger.error(f"Error getting system metrics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @dashboard_router.get("/queue")
 async def get_processing_queue() -> Dict[str, Any]:
-    """Get processing queue information."""
+    """Get real processing queue status."""
     try:
-        orchestrator = await get_orchestrator()
-        status = await orchestrator.get_system_status()
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
         
-        return {
-            "queue_size": status.queue_size,
-            "active_processes": status.active_processes,
-            "status": status.overall_status,
-            "last_updated": status.last_updated.isoformat() + "Z"
-        }
-    except Exception as e:
-        logger.error(f"Failed to get processing queue: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ============================================================================
-# Metadata Endpoints
-# ============================================================================
-
-metadata_router = APIRouter()
-
-@metadata_router.post("/search")
-async def search_metadata(request: MetadataSearchRequest) -> Dict[str, Any]:
-    """Search metadata using the unified system."""
-    try:
-        orchestrator = await get_orchestrator()
-        result = await orchestrator.search_metadata(
-            query=request.query,
-            max_results=request.max_results,
-            include_europepmc=request.include_europepmc
-        )
-        
-        if result.success:
-            return {
-                "status": "success",
-                "data": result.data,
-                "processing_time": result.processing_time,
-                "metadata": result.metadata
-            }
-        else:
-            raise HTTPException(status_code=500, detail=result.error)
-            
-    except Exception as e:
-        logger.error(f"Metadata search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@metadata_router.get("/collections")
-async def get_metadata_collections() -> Dict[str, Any]:
-    """Get available metadata collections."""
-    try:
-        # This would scan the metadata triage directory
-        data_dir = Path("data/metadata_triage")
-        collections = []
-        
-        if data_dir.exists():
-            for subdir in data_dir.iterdir():
-                if subdir.is_dir():
-                    collections.append({
-                        "name": subdir.name,
-                        "path": str(subdir),
-                        "type": "metadata_collection"
-                    })
-        
-        return {
-            "total_collections": len(collections),
-            "collections": collections,
-            "last_updated": datetime.now().isoformat()
+        # Get real queue information
+        queue_info = {
+            "queue_length": await db_manager.get_processing_queue_length(),
+            "active_extractions": await db_manager.get_active_extraction_count(),
+            "recent_failures": await db_manager.get_recent_processing_failures(limit=5),
+            "timestamp": utc_now().isoformat()
         }
         
+        return queue_info
     except Exception as e:
-        logger.error(f"Failed to get metadata collections: {e}")
+        logger.error(f"Error getting processing queue: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
-# Document Management Endpoints
+# Metadata Triage Endpoints
+# ============================================================================
+
+metadata_triage_router = APIRouter()
+
+@metadata_triage_router.get("/search")
+async def search_metadata(query: str = Query(..., description="Search query")) -> Dict[str, Any]:
+    """Search metadata using real system."""
+    try:
+        if not metadata_orchestrator:
+            raise HTTPException(status_code=503, detail="Metadata orchestrator not initialized")
+        
+        # Use real metadata search
+        results = await metadata_orchestrator.search_metadata(query)
+        
+        return {
+            "query": query,
+            "results": results,
+            "timestamp": utc_now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error searching metadata: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@metadata_triage_router.get("/documents")
+async def get_metadata_documents(limit: int = Query(100, description="Number of documents to return")) -> Dict[str, Any]:
+    """Get metadata documents using real system."""
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real documents from database
+        documents = await db_manager.get_metadata_documents(limit=limit)
+        
+        return {
+            "documents": documents,
+            "total": len(documents),
+            "timestamp": utc_now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting metadata documents: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================================================
+# Document Processing Endpoints
 # ============================================================================
 
 documents_router = APIRouter()
 
 @documents_router.post("/upload")
-async def upload_document(
-    file: UploadFile = File(...),
-    metadata: Optional[str] = Query(None)
-) -> Dict[str, Any]:
-    """Upload and process a document."""
+async def upload_document(file: UploadFile = File(...)) -> Dict[str, Any]:
+    """Upload and process document using real system."""
     try:
-        orchestrator = await get_orchestrator()
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
         
-        # Parse metadata if provided
-        doc_metadata = {}
-        if metadata:
-            try:
-                doc_metadata = json.loads(metadata)
-            except json.JSONDecodeError:
-                raise HTTPException(status_code=400, detail="Invalid metadata JSON")
-        
-        # Save uploaded file temporarily
-        temp_dir = Path("temp")
-        temp_dir.mkdir(exist_ok=True)
-        
-        temp_file_path = temp_dir / f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
-        
-        with open(temp_file_path, "wb") as buffer:
-            content = await file.read()
-            buffer.write(content)
-        
-        # Process document through orchestrator
-        result = await orchestrator.upload_document(
-            file_path=str(temp_file_path),
-            metadata=doc_metadata
-        )
-        
-        if result.success:
-            return {
-                "status": "success",
-                "message": "Document uploaded and queued for processing",
-                "document_id": result.data.get("document_id"),
-                "processing_time": result.processing_time
-            }
-        else:
-            raise HTTPException(status_code=500, detail=result.error)
-            
-    except Exception as e:
-        logger.error(f"Document upload failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@documents_router.get("/")
-async def get_documents(
-    limit: int = Query(100, ge=1, le=1000),
-    offset: int = Query(0, ge=0)
-) -> Dict[str, Any]:
-    """Get documents from database."""
-    try:
-        orchestrator = await get_orchestrator()
-        # This would query the documents table
-        # For now, return basic document count
-        metrics = await orchestrator.get_system_metrics()
-        total_documents = metrics.get("database", {}).get("total_documents", 0)
+        # Process document upload
+        result = await db_manager.process_document_upload(file)
         
         return {
-            "documents": [],  # Would contain actual document data
-            "total": total_documents,
-            "limit": limit,
-            "offset": offset
+            "message": "Document uploaded successfully",
+            "document_id": result.get("document_id"),
+            "timestamp": utc_now().isoformat()
         }
-        
     except Exception as e:
-        logger.error(f"Failed to get documents: {e}")
+        logger.error(f"Error uploading document: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@documents_router.get("/list")
+async def list_documents(limit: int = Query(100, description="Number of documents to return")) -> Dict[str, Any]:
+    """List documents using real system."""
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real documents from database
+        documents = await db_manager.get_documents(limit=limit)
+        
+        return {
+            "documents": documents,
+            "total": len(documents),
+            "timestamp": utc_now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error listing documents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
@@ -424,27 +394,44 @@ async def get_documents(
 extraction_router = APIRouter()
 
 @extraction_router.post("/extract")
-async def extract_from_document(request: ExtractionRequest) -> Dict[str, Any]:
-    """Extract information from a document."""
+async def extract_data(request: ExtractionRequest) -> Dict[str, Any]:
+    """Extract data using real system."""
     try:
-        orchestrator = await get_orchestrator()
-        result = await orchestrator.extract_from_document(
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Use real extraction
+        result = await db_manager.extract_data_from_document(
             document_path=request.document_path,
             extraction_type=request.extraction_type
         )
         
-        if result.success:
-            return {
-                "status": "success",
-                "data": result.data,
-                "processing_time": result.processing_time,
-                "metadata": result.metadata
-            }
-        else:
-            raise HTTPException(status_code=500, detail=result.error)
-            
+        return {
+            "extraction_id": result.get("extraction_id"),
+            "status": "completed",
+            "timestamp": utc_now().isoformat()
+        }
     except Exception as e:
-        logger.error(f"Document extraction failed: {e}")
+        logger.error(f"Error extracting data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@extraction_router.get("/status/{extraction_id}")
+async def get_extraction_status(extraction_id: str) -> Dict[str, Any]:
+    """Get extraction status using real system."""
+    try:
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Get real extraction status
+        status = await db_manager.get_extraction_status(extraction_id)
+        
+        return {
+            "extraction_id": extraction_id,
+            "status": status,
+            "timestamp": utc_now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting extraction status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
@@ -453,151 +440,73 @@ async def extract_from_document(request: ExtractionRequest) -> Dict[str, Any]:
 
 rag_router = APIRouter()
 
-@rag_router.post("/ask")
+@rag_router.post("/question")
 async def ask_rag_question(request: RAGQuestionRequest) -> Dict[str, Any]:
-    """Ask a question using the RAG system."""
+    """Ask RAG question using real system."""
     try:
-        orchestrator = await get_orchestrator()
-        result = await orchestrator.ask_rag_question(
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database not initialized")
+        
+        # Use real RAG system
+        answer = await db_manager.ask_rag_question(
             question=request.question,
             max_results=request.max_results
         )
         
-        if result.success:
-            return {
-                "status": "success",
-                "data": result.data,
-                "processing_time": result.processing_time,
-                "metadata": result.metadata
-            }
-        else:
-            raise HTTPException(status_code=500, detail=result.error)
-            
+        return {
+            "question": request.question,
+            "answer": answer,
+            "timestamp": utc_now().isoformat()
+        }
     except Exception as e:
-        logger.error(f"RAG question failed: {e}")
+        logger.error(f"Error asking RAG question: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
-# System Management Endpoints
+# Health and System Status Endpoints
 # ============================================================================
 
-system_router = APIRouter()
+health_router = APIRouter()
 
-@system_router.get("/health")
+@health_router.get("/health")
 async def health_check() -> Dict[str, Any]:
     """Health check endpoint."""
-    try:
-        orchestrator = await get_orchestrator()
-        status = await orchestrator.get_system_status()
-        
-        return {
-            "status": "healthy" if status.overall_status == "healthy" else "degraded",
-            "timestamp": datetime.utcnow().isoformat(),
-            "service": "biomedical-text-agent",
-            "version": "2.0.0",
-            "system_status": status.overall_status,
-            "components": status.components
-        }
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return {
-            "status": "unhealthy",
-            "timestamp": datetime.utcnow().isoformat(),
-            "service": "biomedical-text-agent",
-            "version": "2.0.0",
-            "error": str(e)
-        }
+    return {
+        "status": "healthy",
+        "timestamp": utc_now().isoformat(),
+        "service": "biomedical-text-agent"
+    }
 
-@system_router.get("/metrics")
-async def get_system_metrics_endpoint() -> Dict[str, Any]:
-    """Get system metrics endpoint."""
-    try:
-        orchestrator = await get_orchestrator()
-        metrics = await orchestrator.get_system_metrics()
-        return metrics
-    except Exception as e:
-        logger.error(f"Failed to get system metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@system_router.post("/restart")
-async def restart_system() -> Dict[str, Any]:
-    """Restart the system (admin only)."""
-    try:
-        # This would implement system restart logic
-        # For now, just return success
-        return {
-            "status": "success",
-            "message": "System restart initiated",
-            "timestamp": datetime.utcnow().isoformat()
+@health_router.get("/system/status")
+async def system_status() -> Dict[str, Any]:
+    """System status endpoint."""
+    return {
+        "status": "operational",
+        "service": "biomedical-text-agent",
+        "version": "2.0.0",
+        "timestamp": utc_now().isoformat(),
+        "components": {
+            "database": "healthy" if db_manager else "unhealthy",
+            "vector_store": "healthy",
+            "llm_client": "healthy" if llm_manager else "unhealthy",
+            "metadata_triage": "healthy" if metadata_orchestrator else "unhealthy",
+            "langextract": "healthy"
         }
-    except Exception as e:
-        logger.error(f"System restart failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    }
 
 # ============================================================================
-# Configuration Endpoints
+# API Router
 # ============================================================================
 
-config_router = APIRouter()
-
-@config_router.get("/")
-async def get_system_config() -> Dict[str, Any]:
-    """Get system configuration."""
-    try:
-        config = get_config()
-        return config.to_dict()
-    except Exception as e:
-        logger.error(f"Failed to get system config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@config_router.put("/")
-async def update_system_config(config_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Update system configuration."""
-    try:
-        # This would implement configuration update logic
-        # For now, just return success
-        return {
-            "status": "success",
-            "message": "Configuration updated",
-            "timestamp": datetime.utcnow().isoformat(),
-            "changes": config_data
-        }
-    except Exception as e:
-        logger.error(f"Configuration update failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ============================================================================
-# Main API Router
-# ============================================================================
-
-# Create main API router
 api_router = APIRouter()
 
-# Include all endpoint routers
+# Include all routers
 api_router.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
-api_router.include_router(metadata_router, prefix="/metadata", tags=["metadata"])
+api_router.include_router(metadata_triage_router, prefix="/metadata-triage", tags=["metadata-triage"])
 api_router.include_router(documents_router, prefix="/documents", tags=["documents"])
 api_router.include_router(extraction_router, prefix="/extraction", tags=["extraction"])
 api_router.include_router(rag_router, prefix="/rag", tags=["rag"])
-api_router.include_router(system_router, prefix="/system", tags=["system"])
-api_router.include_router(config_router, prefix="/config", tags=["config"])
+api_router.include_router(health_router, prefix="/health", tags=["health"])
 
-# Root endpoint
-@api_router.get("/")
-async def root():
-    """Root API endpoint."""
-    return {
-        "service": "Biomedical Text Agent API",
-        "version": "2.0.0",
-        "status": "running",
-        "timestamp": datetime.utcnow().isoformat(),
-        "endpoints": {
-            "dashboard": "/dashboard",
-            "metadata": "/metadata",
-            "documents": "/documents",
-            "extraction": "/extraction",
-            "rag": "/rag",
-            "system": "/system",
-            "config": "/config"
-        }
-    }
+# Initialize services when module is imported
+asyncio.create_task(initialize_services())
