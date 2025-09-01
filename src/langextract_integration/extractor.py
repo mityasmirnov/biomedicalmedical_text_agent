@@ -103,7 +103,9 @@ class LangExtractEngine:
         max_workers: int = 8,
         max_char_buffer: int = 1200,
         segment_patients: bool = True,
-        include_visualization: bool = True
+        include_visualization: bool = True,
+        prompt_description: Optional[str] = None,
+        examples_override: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         Extract structured information from biomedical text.
@@ -140,7 +142,9 @@ class LangExtractEngine:
                     text=segment["text"],
                     extraction_passes=extraction_passes,
                     max_workers=max_workers,
-                    max_char_buffer=max_char_buffer
+                    max_char_buffer=max_char_buffer,
+                    prompt_description=prompt_description,
+                    examples_override=examples_override
                 )
                 
                 all_results.append(result)
@@ -238,7 +242,9 @@ class LangExtractEngine:
         text: str,
         extraction_passes: int = 2,
         max_workers: int = 8,
-        max_char_buffer: int = 1200
+        max_char_buffer: int = 1200,
+        prompt_description: Optional[str] = None,
+        examples_override: Optional[List[Dict[str, Any]]] = None
     ) -> Any:
         """
         Run LangExtract on the given text.
@@ -252,8 +258,11 @@ class LangExtractEngine:
         Returns:
             LangExtract result object
         """
-        # Prepare examples from schema classes
-        examples = self._prepare_examples()
+        # Prepare examples from schema classes or override
+        if examples_override:
+            examples = self._build_examples_from_dicts(examples_override)
+        else:
+            examples = self._prepare_examples()
         
         # Configure model parameters
         selected_model_id = self.model_id
@@ -294,7 +303,7 @@ class LangExtractEngine:
         # Run extraction
         result = lx.extract(
             text_or_documents=text,
-            prompt_description=BIOMEDICAL_SYSTEM_PROMPT,
+            prompt_description=(prompt_description or BIOMEDICAL_SYSTEM_PROMPT),
             examples=examples,
             **model_params
         )
@@ -358,6 +367,44 @@ class LangExtractEngine:
                 examples.append(example)
         
         return examples
+
+    def _build_examples_from_dicts(self, examples_data: List[Dict[str, Any]]) -> List[Any]:
+        """
+        Build LangExtract ExampleData objects from a list of example dicts.
+        Each example dict should match the structure used in few_shot_examples:
+        {
+          "extraction_text": str,
+          "extractions": [ { "ClassName": { ... attributes ... } }, ... ]
+        }
+        """
+        built_examples: List[Any] = []
+        for example_data in examples_data or []:
+            try:
+                ex_text = example_data.get("extraction_text") or example_data.get("text")
+                if not ex_text:
+                    continue
+                ex_objs: List[Any] = []
+                for extraction_dict in example_data.get("extractions", []) or []:
+                    if not isinstance(extraction_dict, dict):
+                        continue
+                    for class_name, class_data in extraction_dict.items():
+                        try:
+                            ex_obj = lx.data.Extraction(
+                                extraction_class=class_name,
+                                extraction_text=ex_text,
+                                attributes=class_data,
+                            )
+                            ex_objs.append(ex_obj)
+                        except Exception:
+                            # Skip malformed example entries
+                            continue
+                if ex_objs:
+                    built_examples.append(
+                        lx.data.ExampleData(text=ex_text, extractions=ex_objs)
+                    )
+            except Exception:
+                continue
+        return built_examples
     
     def _combine_results(self, results: List[Any]) -> Dict[str, Any]:
         """
@@ -431,15 +478,8 @@ class LangExtractEngine:
                 # Prefer normalized container's original_extractions if present
                 extractions = extraction_result.get("extractions") or extraction_result.get("original_extractions") or []
                 for extraction in extractions:
-                    # Ensure each line is JSON-serializable dict
-                    if isinstance(extraction, dict):
-                        f.write(json.dumps(extraction, default=str) + "\n")
-                    else:
-                        try:
-                            f.write(json.dumps(extraction.__dict__, default=str) + "\n")
-                        except Exception:
-                            # Fallback to string
-                            f.write(json.dumps({"extraction": str(extraction)}) + "\n")
+                    serializable = self._to_serializable_extraction(extraction)
+                    f.write(json.dumps(serializable, default=str) + "\n")
             
             # Generate visualization
             html_content = lx.visualize(str(temp_file))
@@ -493,7 +533,8 @@ class LangExtractEngine:
         with open(jsonl_file, 'w') as f:
             extractions = results.get("extractions") or results.get("original_extractions") or []
             for extraction in extractions:
-                f.write(json.dumps(extraction, default=str) + "\n")
+                serializable = self._to_serializable_extraction(extraction)
+                f.write(json.dumps(serializable, default=str) + "\n")
         saved_files["jsonl"] = jsonl_file
         
         # Save visualization HTML
@@ -533,6 +574,42 @@ class LangExtractEngine:
             extraction_results,
             ground_truth_file
         )
+
+    def _to_serializable_extraction(self, item: Any) -> Dict[str, Any]:
+        """
+        Convert a LangExtract Extraction object or extraction dict to a plain JSON-serializable dict.
+        Keeps only the essential fields used by visualization and normalization.
+        """
+        if isinstance(item, dict):
+            # Already a dict; ensure required keys are present where possible
+            if "extraction_class" in item:
+                return {
+                    "extraction_class": item.get("extraction_class"),
+                    "attributes": item.get("attributes"),
+                    "extraction_text": item.get("extraction_text"),
+                }
+            # Some formats nest class names at top-level
+            for k, v in item.items():
+                if isinstance(v, dict) and k[0].isupper():
+                    return {
+                        "extraction_class": k,
+                        "attributes": v,
+                        "extraction_text": item.get("extraction_text") or item.get("text")
+                    }
+            return item
+        # Handle LangExtract Extraction-like objects
+        try:
+            extraction_class = getattr(item, 'extraction_class', None)
+            attributes = getattr(item, 'attributes', None)
+            extraction_text = getattr(item, 'extraction_text', None)
+            return {
+                "extraction_class": extraction_class,
+                "attributes": attributes,
+                "extraction_text": extraction_text,
+            }
+        except Exception:
+            # Fallback to string for debugging purposes
+            return {"extraction": str(item)}
 
 
 # Utility functions for easy usage
