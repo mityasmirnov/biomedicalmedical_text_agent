@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -29,11 +29,7 @@ const DataVisualization: React.FC = () => {
   const [selectedChart, setSelectedChart] = useState('overview');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    loadVisualizations();
-  }, [selectedDataset, selectedChart]);
-
-  const loadVisualizations = async () => {
+  const loadVisualizations = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.analytics.getVisualizations({
@@ -46,7 +42,11 @@ const DataVisualization: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDataset, selectedChart]);
+
+  useEffect(() => {
+    loadVisualizations();
+  }, [loadVisualizations]);
 
   const handleExport = async (format: string) => {
     try {

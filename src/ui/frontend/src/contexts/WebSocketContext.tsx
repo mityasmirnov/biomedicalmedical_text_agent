@@ -162,7 +162,7 @@ const WebSocketContext = createContext<WebSocketContextType | undefined>(undefin
 // Provider component
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(webSocketReducer, initialState);
-  const { token, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   // WebSocket URL
   const getWebSocketUrl = () => {

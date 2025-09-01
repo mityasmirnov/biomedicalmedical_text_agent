@@ -22,12 +22,8 @@ import {
   DialogContent,
   DialogActions,
   Alert,
-  Tabs,
-  Tab,
   Tooltip,
-  Divider,
   LinearProgress,
-  CircularProgress,
   Paper,
   Table,
   TableBody,
@@ -40,18 +36,11 @@ import {
   Upload,
   Download,
   Delete,
-  Edit,
   Visibility,
   Search,
-  FilterList,
   Refresh,
-  Add,
   Description,
-  PictureAsPdf,
-  Article,
   Science,
-  Book,
-  Folder,
   CloudUpload,
   CloudDownload
 } from '@mui/icons-material';
@@ -263,11 +252,11 @@ const DocumentManager: React.FC = () => {
 
   const getDocumentTypeIcon = (type: string) => {
     switch (type) {
-      case 'paper': return <Article />;
-      case 'patent': return <Article />;
+      case 'paper': return <Description />;
+      case 'patent': return <Description />;
       case 'case_report': return <Description />;
       case 'clinical_trial': return <Science />;
-      case 'review': return <Book />;
+      case 'review': return <Description />;
       default: return <Description />;
     }
   };

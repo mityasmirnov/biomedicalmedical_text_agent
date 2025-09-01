@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Grid,
@@ -12,46 +12,32 @@ import {
   Alert,
   CircularProgress,
   useTheme,
-  Paper,
-  Divider,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
   Collapse,
-  Tooltip,
 } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
-  Speed as SpeedIcon,
-  Memory as MemoryIcon,
   Storage as StorageIcon,
-  NetworkCheck as NetworkIcon,
   Refresh as RefreshIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   PlayArrow as PlayIcon,
-  Stop as StopIcon,
-  Pause as PauseIcon,
   Warning as WarningIcon,
   Error as ErrorIcon,
   CheckCircle as SuccessIcon,
   Info as InfoIcon,
   Assessment as AssessmentIcon,
-  Timeline as TimelineIcon,
   BarChart as BarChartIcon,
-  PieChart as PieChartIcon,
 } from '@mui/icons-material';
 import {
   LineChart,
   Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,

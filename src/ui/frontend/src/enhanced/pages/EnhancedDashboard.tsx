@@ -35,12 +35,11 @@ import {
   Visibility,
   Edit,
   Stop,
-  Settings,
   Assessment,
   Search
 } from '@mui/icons-material';
 import { useWebSocket } from '../../contexts/WebSocketContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 
 interface SystemStatus {
@@ -88,32 +87,44 @@ const EnhancedDashboard: React.FC = () => {
 
   const [metadataSearchOpen, setMetadataSearchOpen] = useState(false);
   const [documentUploadOpen, setDocumentUploadOpen] = useState(false);
-  const [configOpen, setConfigOpen] = useState(false);
+  
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedModel, setSelectedModel] = useState('google/gemma-2-27b-it:free');
   const [maxResults, setMaxResults] = useState(100);
 
-  const { socket, isConnected } = useWebSocket();
-  const { user } = useAuth();
+  const { isConnected, lastMessage } = useWebSocket();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadDashboardData();
   }, []);
 
   useEffect(() => {
-    if (socket) {
-      socket.on('system_status_update', handleSystemStatusUpdate);
-      socket.on('processing_update', handleProcessingUpdate);
-      socket.on('extraction_complete', handleExtractionComplete);
-
-      return () => {
-        socket.off('system_status_update');
-        socket.off('processing_update');
-        socket.off('extraction_complete');
-      };
+    if (!lastMessage) return;
+    try {
+      const message: any = lastMessage;
+      switch (message.type) {
+        case 'system_status_update':
+          handleSystemStatusUpdate(message.data);
+          break;
+        case 'processing_update':
+          if (message.data) {
+            handleProcessingUpdate(message.data);
+          }
+          break;
+        case 'extraction_complete':
+          if (message.data) {
+            handleExtractionComplete(message.data);
+          }
+          break;
+        default:
+          break;
+      }
+    } catch (e) {
+      // ignore
     }
-  }, [socket]);
+  }, [lastMessage]);
 
   const loadDashboardData = async () => {
     try {
@@ -124,9 +135,22 @@ const EnhancedDashboard: React.FC = () => {
         api.dashboard.getRecentResults()
       ]);
 
-      setSystemStatus(statusRes.data);
-      setProcessingQueue(queueRes.data);
-      setRecentResults(resultsRes.data);
+      // Normalize potentially wrapped payloads to arrays
+      const statusPayload = (statusRes as any)?.data ?? statusRes;
+      const queuePayload = (queueRes as any)?.data ?? queueRes;
+      const resultsPayload = (resultsRes as any)?.data ?? resultsRes;
+
+      setSystemStatus(statusPayload);
+      setProcessingQueue(
+        Array.isArray(queuePayload)
+          ? queuePayload
+          : (queuePayload?.queue || queuePayload?.activities || [])
+      );
+      setRecentResults(
+        Array.isArray(resultsPayload)
+          ? resultsPayload
+          : (resultsPayload?.results || resultsPayload?.data || [])
+      );
       setError(null);
     } catch (err) {
       setError('Failed to load dashboard data');
@@ -159,22 +183,34 @@ const EnhancedDashboard: React.FC = () => {
 
   const handleMetadataSearch = async () => {
     try {
-      const response = await api.metadata.search({
-        query: searchQuery,
-        max_results: maxResults,
-        include_fulltext: true
+      if (!searchQuery.trim()) return;
+      const res = await api.metadataTriage.search(searchQuery.trim());
+      const raw = (res as any)?.data?.results || [];
+      const normalized = raw.map((doc: any) => {
+        const authorsField = Array.isArray(doc?.authors)
+          ? doc.authors
+              .map((a: any) => (typeof a === 'string' ? a : (a?.name || [a?.ForeName, a?.LastName].filter(Boolean).join(' '))))
+              .filter(Boolean)
+              .join(', ')
+          : (doc?.authors || '');
+        const year = doc?.year || doc?.publication_year;
+        const pubDate = doc?.publication_date || doc?.pub_date || (year ? `${year}-01-01` : '');
+        return {
+          pmid: doc?.pmid || doc?.id || '',
+          title: doc?.title || doc?.article_title || doc?.document_title || 'Untitled',
+          abstract: doc?.abstract || doc?.summary || '',
+          journal: doc?.journal || doc?.journal_title || '',
+          publication_date: pubDate,
+          authors: authorsField,
+          relevance_score: typeof doc?.relevance_score === 'number' ? doc.relevance_score : 0,
+          fulltext_available: Boolean(doc?.pmc_link || doc?.full_text_available),
+          source: doc?.source || 'pubmed',
+        };
       });
-
       setMetadataSearchOpen(false);
-      handleProcessingUpdate({
-        id: response.data.job_id,
-        type: 'metadata_search',
-        status: 'running',
-        progress: 0,
-        created_at: new Date().toISOString(),
-        details: { query: searchQuery, max_results: maxResults }
-      });
+      navigate('/knowledge-base/metadata', { state: { searchResults: normalized, searchQuery } });
     } catch (err) {
+      console.error('Metadata search failed:', err);
       setError('Failed to start metadata search');
     }
   };
@@ -250,13 +286,6 @@ const EnhancedDashboard: React.FC = () => {
             sx={{ mr: 1 }}
           >
             Refresh
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<Settings />}
-            onClick={() => setConfigOpen(true)}
-          >
-            Configure
           </Button>
         </Box>
       </Box>

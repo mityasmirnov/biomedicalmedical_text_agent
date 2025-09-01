@@ -41,6 +41,13 @@ import { useWebSocket } from '../../contexts/WebSocketContext';
 
 // Components
 import NotificationPanel from '../Notifications/NotificationPanel';
+import {
+  DashboardCustomize as EnhancedIcon,
+  Science as OntologyIcon,
+  BarChart as AnalyticsIcon,
+  Tune as PromptIcon,
+  Storage as EnhancedDbIcon
+} from '@mui/icons-material';
 
 const drawerWidth = 280;
 
@@ -108,6 +115,34 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       text: 'Settings',
       icon: <SettingsIcon />,
       path: '/settings',
+    },
+  ];
+
+  const enhancedItems: NavigationItem[] = [
+    {
+      text: 'Enhanced Dashboard',
+      icon: <EnhancedIcon />,
+      path: '/enhanced/dashboard',
+    },
+    {
+      text: 'Enhanced Database',
+      icon: <EnhancedDbIcon />,
+      path: '/enhanced/database',
+    },
+    {
+      text: 'Enhanced Analytics',
+      icon: <AnalyticsIcon />,
+      path: '/enhanced/analytics',
+    },
+    {
+      text: 'Enhanced Prompts',
+      icon: <PromptIcon />,
+      path: '/enhanced/prompts',
+    },
+    {
+      text: 'Ontology Browser',
+      icon: <OntologyIcon />,
+      path: '/enhanced/ontologies',
     },
   ];
 
@@ -205,6 +240,52 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </ListItem>
           );
         })}
+        {/* Enhanced Section Divider */}
+        <Divider sx={{ my: 1 }} />
+        <Typography variant="caption" sx={{ pl: 2, pb: 1, display: 'block', color: 'text.secondary' }}>
+          Enhanced UI
+        </Typography>
+        {enhancedItems.map((item) => {
+          const isActive = location.pathname.startsWith(item.path);
+          return (
+            <ListItem key={item.text} disablePadding sx={{ px: 1 }}>
+              <ListItemButton
+                onClick={() => handleNavigation(item.path)}
+                selected={isActive}
+                sx={{
+                  borderRadius: 2,
+                  mx: 1,
+                  '&.Mui-selected': {
+                    backgroundColor: theme.palette.primary.main,
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor: theme.palette.primary.dark,
+                    },
+                    '& .MuiListItemIcon-root': {
+                      color: 'white',
+                    },
+                  },
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: 40,
+                    color: isActive ? 'inherit' : theme.palette.text.secondary,
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText
+                  primary={item.text}
+                  primaryTypographyProps={{
+                    fontSize: '0.9rem',
+                    fontWeight: isActive ? 500 : 400,
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+          );
+        })}
       </List>
 
       <Divider />
@@ -260,7 +341,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           {/* Page title */}
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {navigationItems.find(item => location.pathname.startsWith(item.path))?.text || 'Dashboard'}
+            {navigationItems.find(item => location.pathname.startsWith(item.path))?.text
+              || (location.pathname.startsWith('/enhanced/dashboard') && 'Enhanced Dashboard')
+              || (location.pathname.startsWith('/enhanced/database') && 'Enhanced Database')
+              || (location.pathname.startsWith('/enhanced/analytics') && 'Enhanced Analytics')
+              || (location.pathname.startsWith('/enhanced/prompts') && 'Enhanced Prompts')
+              || (location.pathname.startsWith('/enhanced/ontologies') && 'Ontology Browser')
+              || 'Dashboard'}
           </Typography>
 
           {/* Notifications */}

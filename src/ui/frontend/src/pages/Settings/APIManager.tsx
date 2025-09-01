@@ -7,10 +7,6 @@ import {
   Typography,
   Button,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Switch,
   FormControlLabel,
   Alert,
@@ -26,19 +22,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  IconButton,
-  Tooltip
+  IconButton
 } from '@mui/material';
 import { 
-  Settings, 
-  Key, 
-  Assessment, 
-  Refresh, 
-  Add, 
-  Edit,
-  Delete,
-  Visibility,
-  VisibilityOff
+  Key,
+  Assessment,
+  Visibility
 } from '@mui/icons-material';
 import { api } from '../../services/api';
 
@@ -444,16 +433,12 @@ const APIManager: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Box display="flex" gap={1}>
-                        <Tooltip title="Test Model">
-                          <IconButton size="small">
-                            <Assessment />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="View Details">
-                          <IconButton size="small">
-                            <Visibility />
-                          </IconButton>
-                        </Tooltip>
+                        <IconButton size="small" aria-label="test model">
+                          <Assessment />
+                        </IconButton>
+                        <IconButton size="small" aria-label="view details">
+                          <Visibility />
+                        </IconButton>
                       </Box>
                     </TableCell>
                   </TableRow>

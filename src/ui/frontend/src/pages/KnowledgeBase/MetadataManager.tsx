@@ -80,46 +80,36 @@ const MetadataManager: React.FC = () => {
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
-    
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.append('query', searchQuery);
-      formData.append('max_results', filters.maxResults.toString());
-      formData.append('include_fulltext', filters.includeFulltext.toString());
-      formData.append('source', filters.source);
-      
-      const response = await api.metadata.search(formData);
-      setSearchResults(response.data.results || []);
+      const res = await api.metadataTriage.search(searchQuery.trim());
+      const raw = (res as any)?.data?.results || [];
+      const normalized = raw.map((doc: any) => {
+        const authorsField = Array.isArray(doc?.authors)
+          ? doc.authors
+              .map((a: any) => (typeof a === 'string' ? a : (a?.name || [a?.ForeName, a?.LastName].filter(Boolean).join(' '))))
+              .filter(Boolean)
+              .join(', ')
+          : (doc?.authors || '');
+        const year = doc?.year || doc?.publication_year;
+        const pubDate = doc?.publication_date || doc?.pub_date || (year ? `${year}-01-01` : '');
+        return {
+          pmid: doc?.pmid || doc?.id || '',
+          title: doc?.title || doc?.article_title || doc?.document_title || 'Untitled',
+          abstract: doc?.abstract || doc?.summary || '',
+          journal: doc?.journal || doc?.journal_title || '',
+          publication_date: pubDate,
+          authors: authorsField,
+          relevance_score: typeof doc?.relevance_score === 'number' ? doc.relevance_score : 0,
+          fulltext_available: Boolean(doc?.pmc_link || doc?.full_text_available),
+          source: doc?.source || 'pubmed',
+        } as MetadataResult;
+      });
+      setSearchResults(normalized);
       setSearchDialogOpen(false);
     } catch (error) {
       console.error('Search failed:', error);
-      // Use mock data for development
-      setSearchResults([
-        {
-          pmid: '12345678',
-          title: `Search result for: ${searchQuery}`,
-          abstract: 'This is a sample abstract for the search query. It contains relevant information about the topic.',
-          journal: 'Journal of Medical Research',
-          publication_date: '2024-01-15',
-          authors: 'Smith J, Johnson A, Brown M',
-          relevance_score: 0.85,
-          fulltext_available: true,
-          source: 'pubmed'
-        },
-        {
-          pmid: '87654321',
-          title: `Another result for: ${searchQuery}`,
-          abstract: 'Another sample abstract with different content but related to the search query.',
-          journal: 'Clinical Studies',
-          publication_date: '2024-01-10',
-          authors: 'Wilson R, Davis K',
-          relevance_score: 0.72,
-          fulltext_available: false,
-          source: 'europepmc'
-        }
-      ]);
-      setSearchDialogOpen(false);
+      alert('Search failed. Please check the backend and your PubMed credentials.');
     } finally {
       setLoading(false);
     }

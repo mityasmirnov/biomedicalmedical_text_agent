@@ -43,13 +43,8 @@ import {
 } from 'recharts';
 import {
   TrendingUp,
-  TrendingDown,
-  Assessment,
   Download,
-  Refresh,
-  FilterList,
-  Visibility,
-  VisibilityOff
+  Refresh
 } from '@mui/icons-material';
 import { api } from '../../services/api';
 

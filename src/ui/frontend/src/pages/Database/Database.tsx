@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import {
   Box,
@@ -141,7 +141,7 @@ const Database: React.FC = () => {
   const [savedQueries, setSavedQueries] = useState<string[]>([]);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   
-  const queryClient = useQueryClient();
+  
 
   // Fetch real database data
   const { data: databaseStatusData, isLoading: statusLoading } = useQuery({

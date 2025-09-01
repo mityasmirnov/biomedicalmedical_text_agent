@@ -51,6 +51,12 @@ export const api = {
     getById: (id: string) => apiClient.get(`/metadata/${id}`),
   },
 
+  // Metadata Triage (PubMed) APIs
+  metadataTriage: {
+    search: (query: string) => apiClient.get('/metadata-triage/search', { params: { query } }),
+    getDocuments: (limit?: number) => apiClient.get('/metadata-triage/documents', { params: { limit } }),
+  },
+
   // Document APIs
   documents: {
     getAll: () => apiClient.get('/documents'),

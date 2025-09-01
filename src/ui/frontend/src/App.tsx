@@ -24,6 +24,11 @@ import APIManager from './pages/Settings/APIManager';
 import PromptManager from './pages/Settings/PromptManager';
 import DataVisualization from './pages/Analytics/DataVisualization';
 import DocumentManager from './pages/Documents/DocumentManager';
+import EnhancedDashboard from './enhanced/pages/EnhancedDashboard';
+import EnhancedDatabaseManager from './enhanced/pages/DatabaseManager';
+import EnhancedDataVisualization from './enhanced/pages/DataVisualization';
+import EnhancedPromptManager from './enhanced/pages/PromptManager';
+import EnhancedOntologyBrowser from './enhanced/pages/OntologyBrowser';
 
 // Contexts
 import { AuthProvider } from './contexts/AuthContext';
@@ -172,6 +177,12 @@ const AppContent: React.FC = () => {
                     <Route path="/settings/*" element={<Settings />} />
                     <Route path="/settings/api" element={<APIManager />} />
                     <Route path="/settings/prompts" element={<PromptManager />} />
+                    {/* Enhanced UI routes */}
+                    <Route path="/enhanced/dashboard" element={<EnhancedDashboard />} />
+                    <Route path="/enhanced/database" element={<EnhancedDatabaseManager />} />
+                    <Route path="/enhanced/analytics" element={<EnhancedDataVisualization />} />
+                    <Route path="/enhanced/prompts" element={<EnhancedPromptManager />} />
+                    <Route path="/enhanced/ontologies" element={<EnhancedOntologyBrowser />} />
                   </Routes>
                 </Layout>
               </WebSocketProvider>

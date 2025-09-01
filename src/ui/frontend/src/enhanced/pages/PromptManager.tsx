@@ -37,7 +37,7 @@ const PromptManager: React.FC = () => {
   const [promptName, setPromptName] = useState('');
   const [promptType, setPromptType] = useState('system');
   const [agentType, setAgentType] = useState('demographics');
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
 
   useEffect(() => {
     loadPrompts();

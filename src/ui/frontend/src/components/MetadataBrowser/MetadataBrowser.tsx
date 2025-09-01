@@ -30,12 +30,10 @@ import {
 import {
   Search as SearchIcon,
   Visibility as ViewIcon,
-  Download as DownloadIcon,
   Science as ScienceIcon,
-  Description as DocumentIcon,
   Link as LinkIcon,
 } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '../../services/api';
 
 const MetadataBrowser: React.FC = () => {
@@ -46,7 +44,7 @@ const MetadataBrowser: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
 
-  // Fetch metadata overview
+  // Fetch metadata overview (local collections)
   const { data: metadataOverview, isLoading: overviewLoading } = useQuery({
     queryKey: ['metadata-overview'],
             queryFn: () => api.metadata.getAll(),
@@ -55,7 +53,7 @@ const MetadataBrowser: React.FC = () => {
   // Extract data from API response
   const metadataData = metadataOverview?.data || metadataOverview;
 
-  // Fetch collection documents
+  // Fetch collection documents (from local DB)
   const { data: collectionData, isLoading: collectionLoading } = useQuery({
     queryKey: ['collection-documents', selectedCollection, page],
             queryFn: () => selectedCollection ? 
@@ -67,15 +65,14 @@ const MetadataBrowser: React.FC = () => {
   // Extract data from API response
   const collectionDataExtracted = collectionData?.data || collectionData;
 
-  // Search metadata
-  const { data: searchResults, isLoading: searchLoading } = useQuery({
-    queryKey: ['metadata-search', searchQuery],
-            queryFn: () => searchQuery ? api.metadata.search({ query: searchQuery }) : null,
-    enabled: !!searchQuery,
-  });
+  // PubMed/triage search via backend orchestrator
+  const {
+    mutate: runSearch,
+    data: searchResponse,
+    isLoading: searchLoading,
+  } = useMutation((q: string) => api.metadataTriage.search(q));
 
-  // Extract data from API response
-  const searchData = searchResults?.data || searchResults;
+  const searchResults = (searchResponse as any)?.data?.results || [];
 
   const handleCollectionSelect = (collectionName: string) => {
     setSelectedCollection(collectionName);
@@ -88,9 +85,8 @@ const MetadataBrowser: React.FC = () => {
   };
 
   const handleSearch = () => {
-    if (searchQuery.trim()) {
-      // Search is triggered automatically by useQuery
-    }
+    if (!searchQuery.trim()) return;
+    runSearch(searchQuery.trim());
   };
 
   return (
@@ -133,6 +129,73 @@ const MetadataBrowser: React.FC = () => {
       </Card>
 
       <Grid container spacing={3}>
+        {/* Search Results */}
+        {searchLoading && (
+          <Grid item xs={12}>
+            <Card variant="outlined" sx={{ mb: 2 }}>
+              <CardContent>
+                <Typography>Searching PubMed…</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+        {!!searchResults.length && (
+          <Grid item xs={12}>
+            <Card variant="outlined" sx={{ mb: 2 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Search Results ({searchResults.length})
+                </Typography>
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>PMID</TableCell>
+                        <TableCell>Title</TableCell>
+                        <TableCell>Journal</TableCell>
+                        <TableCell>Year</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {searchResults.map((doc: any) => (
+                        <TableRow key={doc.pmid || doc.id} hover>
+                          <TableCell>
+                            <Chip label={doc.pmid || 'N/A'} size="small" color="primary" />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" noWrap sx={{ maxWidth: 500 }}>
+                              {doc.title || doc.article_title || 'Untitled'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">
+                              {doc.journal || doc.journal_title || '—'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">
+                              {doc.year || doc.publication_year || '—'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            {doc.pmid && (
+                              <Tooltip title="View on PubMed">
+                                <IconButton size="small" onClick={() => window.open(`https://pubmed.ncbi.nlm.nih.gov/${doc.pmid}/`, '_blank')}>
+                                  <LinkIcon />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
         {/* Collections Sidebar */}
         <Grid item xs={12} md={4}>
           <Typography variant="h6" gutterBottom>
